@@ -11,13 +11,13 @@ ETF
 
 '''
 
-
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import math
 import pdfplumber
-from nltk.sentiment import SentimentIntensityAnalyzer
+import nltk
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import re
@@ -25,8 +25,12 @@ from collections import Counter
 
 SPY = "SPY.csv"
 AAPL_PDF = 'AAPL 10-K'
+NVDA_PDF = 'NVDA 10-K.pdf'
+PTON_PDF = 'PTON 10-K.pdf'
+
+
 class TextAnalyzer:
-    def __init__(self,file):
+    def __init__(self, file):
         self.filtered = []
         self.tokens = []
         self.file = file
@@ -50,7 +54,6 @@ class TextAnalyzer:
         # Remove punctuation
         self.text = re.sub(r'[^\w\s]', '', self.text)
 
-
     def tokenize_text(self):
         self.tokens = word_tokenize(self.text)
 
@@ -62,16 +65,7 @@ class TextAnalyzer:
         word_freq = Counter(self.filtered)
         analyzer = SentimentIntensityAnalyzer()
         sentiment_scores = analyzer.polarity_scores(self.text)
-
-        # Print the overall sentiment
-        print("Overall Sentiment:")
-        if sentiment_scores['compound'] >= 0.05:
-            return print("Positive")
-        elif sentiment_scores['compound'] <= -0.05:
-            return print("Negative")
-        else:
-            return print("Neutral")
-
+        return print(sentiment_scores)
 
     def analyze(self):
         self.extract_text()
@@ -86,16 +80,19 @@ class Asset:
     def __init__(self, *components):
         self.components = []
     '''
+
     def __init__(self, file):
         self.file = file
         # self.df = None
         # self.var = None
+
     '''
     def __repr__(self,*args):
         # 0th position is always a str represented by the date
         attributes = ", ".join(f"{key}={value}" for key, value in self.__dict__.items())
         return f"Asset({attributes})"
     '''
+
     def create_dataframe(self):
         self.df = pd.read_csv(self.file)
         print(self.df)
@@ -107,7 +104,7 @@ class Asset:
         return self.var
 
     def sharpe_ratio(self):
-        self.sd = self.var.loc['std'] #standard deviation
+        self.sd = self.var.loc['std']  # standard deviation
         # print(self.sd)
         return self.sd
 
@@ -117,12 +114,8 @@ class Asset:
         self.sharpe_ratio()
 
 
-
-
-
-
-
 def main():
+    '''
     Assets_1 = Asset(SPY)
     Assets_1.process_file()
     summary = Assets_1.summarize()
@@ -130,14 +123,19 @@ def main():
 
     stdev = Assets_1.sharpe_ratio()
     print(stdev)
-
-
+    '''
     # Assets_1.summarize(df)
     # print(Assets_1)
+    '''
     analyzer = TextAnalyzer(AAPL_PDF)
-    analyzer.analyze()
-
-
+    print('AAPL 10-K Analysis')
+    analyzer.analyze() # results {'neg': 0.057, 'neu': 0.816, 'pos': 0.127, 'compound': 1.0}
+    analyzer = TextAnalyzer(NVDA_PDF)
+    print('NVDA 10-K Analysis')
+    analyzer.analyze() # results {'neg': 0.042, 'neu': 0.824, 'pos': 0.133, 'compound': 1.0}
+    analyzer = TextAnalyzer(PTON_PDF)
+    print('Peloton 10-K Analysis')
+    analyzer.analyze() # results {'neg': 0.039, 'neu': 0.859, 'pos': 0.102, 'compound': 1.0}
+    '''
 if __name__ == '__main__':
     main()
-
