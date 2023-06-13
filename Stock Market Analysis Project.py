@@ -27,6 +27,7 @@ SPY = "SPY.csv"
 AAPL_PDF = 'AAPL 10-K'
 NVDA_PDF = 'NVDA 10-K.pdf'
 PTON_PDF = 'PTON 10-K.pdf'
+META_PDF = 'META 10K.pdf'
 
 
 class TextAnalyzer:
@@ -37,6 +38,10 @@ class TextAnalyzer:
         self.text = ""
 
     def extract_text(self):
+        '''Function: extract text
+        Does: uses pdf plumber to pull all text from pdfs
+        :return:
+        '''
         with pdfplumber.open(self.file) as pdf:
             for page in pdf.pages:
                 self.text += page.extract_text()
@@ -74,6 +79,15 @@ class TextAnalyzer:
         self.remove_stop()
         self.anaylze_text()
 
+    def plot(self, data):
+        sent_values = list(data.values())
+        sent_keys = list(data.keys())
+        plt.bar(x=sent_values, y=sent_keys)
+        plt.xlabel('Sentiment')
+        plt.ylabel('Score')
+        plt.legend()
+        plt.show()
+
 
 class Asset:
     '''
@@ -83,8 +97,8 @@ class Asset:
 
     def __init__(self, file):
         self.file = file
-        # self.df = None
-        # self.var = None
+        self.df = None
+        self.var = None
 
     '''
     def __repr__(self,*args):
@@ -114,8 +128,9 @@ class Asset:
         self.sharpe_ratio()
 
 
+
+
 def main():
-    '''
     Assets_1 = Asset(SPY)
     Assets_1.process_file()
     summary = Assets_1.summarize()
@@ -123,7 +138,10 @@ def main():
 
     stdev = Assets_1.sharpe_ratio()
     print(stdev)
-    '''
+
+
+
+
     # Assets_1.summarize(df)
     # print(Assets_1)
     '''
@@ -136,6 +154,10 @@ def main():
     analyzer = TextAnalyzer(PTON_PDF)
     print('Peloton 10-K Analysis')
     analyzer.analyze() # results {'neg': 0.039, 'neu': 0.859, 'pos': 0.102, 'compound': 1.0}
+    analyzer = TextAnalyzer(META_PDF)
+    print('META 10-K Analysis')
+    analyzer.analyze() # results {'neg': 0.055, 'neu': 0.801, 'pos': 0.144, 'compound': 1.0}
     '''
+
 if __name__ == '__main__':
     main()
