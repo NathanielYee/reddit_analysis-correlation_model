@@ -29,6 +29,12 @@ NVDA_PDF = 'NVDA 10-K.pdf'
 PTON_PDF = 'PTON 10-K.pdf'
 META_PDF = 'META 10K.pdf'
 
+# class Reddit_Analysis:
+#     def __init__(self):
+#         self.items = []
+#     def reddit(self):
+#         praw.Reddit(client_id=,client_secret=,user_agent = 'Nathaniel Yee', username =  )
+
 
 class TextAnalyzer:
     def __init__(self, file):
@@ -96,6 +102,7 @@ class Asset:
     '''
 
     def __init__(self, file):
+        self.volatility = None
         self.file = file
         self.df = None
         self.var = None
@@ -117,7 +124,24 @@ class Asset:
         # print(self.var)
         return self.var
 
-    def sharpe_ratio(self):
+    def calculate_volatlity(self):
+        returns = self.df['Close'].pctchange().dropna()
+        self.volatility = np.sqrt(252) * returns.std()
+        return self.volatility
+
+    def add_dataframe_column(self, dataframe, column_name):
+        """ Trying to add all the close columns into one panda dataframe and return it """
+        column = dataframe[column_name]
+        self.combined_df = pd.concat([self.combined_df, column], axis=1)
+        return self.combined_df
+
+    def calculate_return(self, port_data, weights):
+        for stock in port_data.columns[1:]:
+            port_data[stock + '_Return'] = port_data[stock].pct_change()
+
+        port_data['Portfolio_Return'] = port_data.iloc[:, 1:].mul(weights).sum(axis=1)
+        
+    def standard_deviation(self):
         self.sd = self.var.loc['std']  # standard deviation
         # print(self.sd)
         return self.sd
@@ -126,6 +150,8 @@ class Asset:
         self.create_dataframe()
         self.summarize()
         self.sharpe_ratio()
+
+# class Recommendation:
 
 
 
