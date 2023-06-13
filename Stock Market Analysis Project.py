@@ -22,6 +22,10 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import re
 from collections import Counter
+import numpy as np
+import plotly.graph_objects as go
+import praw
+from Keys import CLIENT_ID, SECRET_KEY, reddit_userName, reddit_password
 
 SPY = "SPY.csv"
 AAPL_PDF = 'AAPL 10-K'
@@ -106,6 +110,7 @@ class Asset:
         self.file = file
         self.df = None
         self.var = None
+        self.combined_df = pd.DataFrame()
 
     '''
     def __repr__(self,*args):
@@ -118,6 +123,14 @@ class Asset:
         self.df = pd.read_csv(self.file)
         print(self.df)
         return self.df
+
+    def candlestick(self):
+        fig = go.Figure(data=[go.Candlestick(x=self.df['Date'],
+                                             open=self.df['Open'], high=self.df['High'],
+                                             low=self.df['Low'], close=self.df['Close'])
+                              ])
+        fig.update_layout(xaxis_rangeslider_visible=False)
+        fig.show()
 
     def summarize(self):
         self.var = (self.df.describe())
@@ -148,8 +161,10 @@ class Asset:
 
     def process_file(self):
         self.create_dataframe()
+        self.candlestick()
         self.summarize()
         self.sharpe_ratio()
+
 
 # class Recommendation:
 
@@ -157,13 +172,27 @@ class Asset:
 
 
 def main():
+    # Create the Berkshire Hathaway Portfolio by combining stock data for multiple datasets
+    # Import all of the assets in Berkshire Porfolio into one pandas data frame of all of the closing prices
+    # portfolio_data = pd.merge(stock1_data, stock2_data, on='Date', how='inner')
+    # Merge the stock data into a single DataFrame based on the 'Date' column
+    portfolio_data = pd.merge(stock1_data, stock2_data, on='Date', how='inner')
+
+
+
     Assets_1 = Asset(SPY)
     Assets_1.process_file()
     summary = Assets_1.summarize()
     print(summary)
 
+    close = Assets_1.close_prices()
+    print(close)
+
     stdev = Assets_1.sharpe_ratio()
     print(stdev)
+
+
+
 
 
 
