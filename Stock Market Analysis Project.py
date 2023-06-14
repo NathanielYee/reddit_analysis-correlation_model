@@ -25,7 +25,7 @@ from collections import Counter
 import numpy as np
 import plotly.graph_objects as go
 import praw
-from Keys import CLIENT_ID, SECRET_KEY, reddit_userName, reddit_password
+from Keys import client_id, client_secret, user_agent,username,password
 
 SPY = "SPY.csv"
 AAPL_PDF = 'AAPL 10-K'
@@ -33,12 +33,20 @@ NVDA_PDF = 'NVDA 10-K.pdf'
 PTON_PDF = 'PTON 10-K.pdf'
 META_PDF = 'META 10K.pdf'
 
-# class Reddit_Analysis:
-#     def __init__(self):
-#         self.items = []
-#     def reddit(self):
-#         praw.Reddit(client_id=,client_secret=,user_agent = 'Nathaniel Yee', username =  )
+class Reddit_Analysis:
+     def __init__(self):
+        self.items = []
+     def reddit(self):
+        reddit = praw.Reddit(client_id=client_id, client_secret=client_secret, user_agent=user_agent,username=username, password=password)
+        subreddit = reddit.subreddit('wallstreetbets')
+        top_subreddit = subreddit.new(limit=25)
+        words_collection = []
 
+        for submission in top_subreddit:
+            title = submission.title
+            title_words = title.split()
+            words_collection.append(title_words)
+        return words_collection
 
 class TextAnalyzer:
     def __init__(self, file):
@@ -176,7 +184,7 @@ def main():
     # Import all of the assets in Berkshire Porfolio into one pandas data frame of all of the closing prices
     # portfolio_data = pd.merge(stock1_data, stock2_data, on='Date', how='inner')
     # Merge the stock data into a single DataFrame based on the 'Date' column
-    portfolio_data = pd.merge(stock1_data, stock2_data, on='Date', how='inner')
+    #portfolio_data = pd.merge(stock1_data, stock2_data, on='Date', how='inner')
 
 
 
@@ -213,6 +221,7 @@ def main():
     print('META 10-K Analysis')
     analyzer.analyze() # results {'neg': 0.055, 'neu': 0.801, 'pos': 0.144, 'compound': 1.0}
     '''
+    Reddit_Analysis.reddit()
 
 if __name__ == '__main__':
     main()
