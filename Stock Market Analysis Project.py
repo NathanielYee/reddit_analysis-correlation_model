@@ -36,17 +36,19 @@ META_PDF = 'META 10K.pdf'
 class Reddit_Analysis:
      def __init__(self):
         self.items = []
-     def reddit(self):
+     def reddit_praw(self):
         reddit = praw.Reddit(client_id=client_id, client_secret=client_secret, user_agent=user_agent,username=username, password=password)
         subreddit = reddit.subreddit('wallstreetbets')
         top_subreddit = subreddit.new(limit=25)
-        words_collection = []
+        self.items = []
 
         for submission in top_subreddit:
             title = submission.title
             title_words = title.split()
-            words_collection.append(title_words)
-        return words_collection
+            self.items.append(title_words)
+        return print(self.items)
+     def reddit_sentiment(self):
+
 
 class TextAnalyzer:
     def __init__(self, file):
@@ -187,7 +189,7 @@ def main():
     #portfolio_data = pd.merge(stock1_data, stock2_data, on='Date', how='inner')
 
 
-
+    '''
     Assets_1 = Asset(SPY)
     Assets_1.process_file()
     summary = Assets_1.summarize()
@@ -198,7 +200,7 @@ def main():
 
     stdev = Assets_1.sharpe_ratio()
     print(stdev)
-
+    '''
 
 
 
@@ -221,7 +223,8 @@ def main():
     print('META 10-K Analysis')
     analyzer.analyze() # results {'neg': 0.055, 'neu': 0.801, 'pos': 0.144, 'compound': 1.0}
     '''
-    Reddit_Analysis.reddit()
+    reddit_analysis = Reddit_Analysis()
+    reddit_analysis.reddit_praw()
 
 if __name__ == '__main__':
     main()
