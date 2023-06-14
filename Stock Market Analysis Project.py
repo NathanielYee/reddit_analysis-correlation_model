@@ -37,6 +37,7 @@ class Reddit_Analysis:
      def __init__(self):
         self.titles = []
         self.tickers = []
+        self.clean_list = []
      def reddit_praw(self):
         reddit = praw.Reddit(client_id=client_id, client_secret=client_secret, user_agent=user_agent,username=username, password=password)
         subreddit = reddit.subreddit('wallstreetbets')
@@ -47,13 +48,23 @@ class Reddit_Analysis:
             title_words = title.split()
             self.titles.append(title_words)
         return print(self.titles)
+
+     def clean_reddit(self):
+         large_list = ' '.join(map(str,self.titles))
+         clean_list = re.sub(r'[^\w\s]','',large_list)
+         self.clean_list = clean_list
+         return print(self.clean_list)
+
      def reddit_symbols(self):
          known_not_stocks = ['UPVOTE','SUPPORT','YOLO','CLASS','ACTION','AGAINST','APES','TENDIES','LOSS','GAIN','WSB',
                              'I','STILL','HEAR','NO','BELL','AGAIN']
-         known_stocks = ['SPY', 'TSLA']
-         for title in self.titles:
+         known_stocks = pd.read_csv('stock_tickers.csv')
+         tickers = known_stocks['Ticker'].tolist()
+         for title in self.clean_list:
              for word in title:
-                 if word.isupper() or known_stocks and word not in known_not_stocks:
+                 if word.isupper() and word not in known_not_stocks:
+                     self.tickers.append(word)
+                 if word in tickers:
                      self.tickers.append(word)
                      return print(self.tickers)
 
@@ -96,26 +107,24 @@ class TextAnalyzer:
         stop_words = set(stopwords.words('english'))
         self.filtered = [token for token in self.tokens if token.lower() not in stop_words]
 
-    def anaylze_text(self):
+    def analyze_text(self):
         word_freq = Counter(self.filtered)
         analyzer = SentimentIntensityAnalyzer()
         sentiment_scores = analyzer.polarity_scores(self.text)
-        return print(sentiment_scores)
+        return sentiment_scores
 
     def analyze(self):
         self.extract_text()
         self.preprocess_text()
         self.tokenize_text()
         self.remove_stop()
-        self.anaylze_text()
+        return self.analyze_text()
 
-    def plot(self, data):
+
+    def plot(self,data):
         sent_values = list(data.values())
         sent_keys = list(data.keys())
-        plt.bar(x=sent_values, y=sent_keys)
-        plt.xlabel('Sentiment')
-        plt.ylabel('Score')
-        plt.legend()
+        plt.bar(sent_keys,sent_values)
         plt.show()
 
 
@@ -229,13 +238,14 @@ def main():
     analyzer = TextAnalyzer(PTON_PDF)
     print('Peloton 10-K Analysis')
     analyzer.analyze() # results {'neg': 0.039, 'neu': 0.859, 'pos': 0.102, 'compound': 1.0}
+    '''
     analyzer = TextAnalyzer(META_PDF)
     print('META 10-K Analysis')
-    analyzer.analyze() # results {'neg': 0.055, 'neu': 0.801, 'pos': 0.144, 'compound': 1.0}
-    '''
-    reddit_analysis = Reddit_Analysis()
-    reddit_analysis.reddit_praw()
-    reddit_analysis.reddit_symbols()
+    scores = analyzer.analyze() # results {'neg': 0.055, 'neu': 0.801, 'pos': 0.144, 'compound': 1.0}
+    analyzer.plot(data=scores)
+    #reddit_analysis = Reddit_Analysis()
+    #reddit_analysis.reddit_praw()
+    #reddit_analysis.reddit_symbols()
 
 if __name__ == '__main__':
     main()
