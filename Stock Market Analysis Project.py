@@ -26,6 +26,7 @@ import numpy as np
 import plotly.graph_objects as go
 import praw
 from Keys import client_id, client_secret, user_agent,username,password
+import os
 
 SPY = "SPY.csv"
 AAPL_PDF = 'AAPL 10-K'
@@ -173,6 +174,7 @@ class Asset:
 
     def add_dataframe_column(self, dataframe, column_name):
         """ Trying to add all the close columns into one panda dataframe and return it """
+        #self.combined_df =
         column = dataframe[column_name]
         self.combined_df = pd.concat([self.combined_df, column], axis=1)
         return self.combined_df
@@ -220,6 +222,14 @@ def main():
     stdev = Assets_1.sharpe_ratio()
     print(stdev)
     '''
+    #weights = [0.05] * 20
+    #entries = os.listdir('Berkshire')
+    #for entry in range(1):
+        # ASSE = Asset(entry)
+
+    df = pd.DataFrame()
+
+
 
 
 
