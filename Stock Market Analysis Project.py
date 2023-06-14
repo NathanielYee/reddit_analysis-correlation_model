@@ -36,39 +36,77 @@ PTON_PDF = 'PTON 10-K.pdf'
 META_PDF = 'META 10K.pdf'
 
 class Reddit_Analysis:
-     def __init__(self):
-        self.titles = []
+    def __init__(self):
+        self.new_titles = []
+        self.top_titles = []
         self.tickers = []
         self.clean_list = []
-     def reddit_praw(self):
+    def reddit_praw(self):
         reddit = praw.Reddit(client_id=client_id, client_secret=client_secret, user_agent=user_agent,username=username, password=password)
         subreddit = reddit.subreddit('wallstreetbets')
-        top_subreddit = subreddit.new(limit=100)
+        new_subreddit = subreddit.new(limit=30)
+        top_subreddit = subreddit.top(time_filter="day",limit=5)
+
+        for submission in new_subreddit:
+            title = submission.title
+            title_words = title.split()
+            self.new_titles.append(title_words)
+
 
         for submission in top_subreddit:
             title = submission.title
             title_words = title.split()
-            self.titles.append(title_words)
-        return print(self.titles)
+            self.top_titles.append(title_words)
+        return print(self.new_titles)#, print(self.top_titles)
 
-     def clean_reddit(self):
-         large_list = ' '.join(map(str,self.titles))
-         clean_list = re.sub(r'[^\w\s]','',large_list)
-         self.clean_list = clean_list
-         return print(self.clean_list)
+    def clean_reddit(self):
+        '''Asked Chat GPT how to remove emojis '''
+        emoji_pattern = re.compile("["
+                                   u"\U0001F600-\U0001F64F"  # emoticons
+                                   u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                                   u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                                   u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                                   u"\U00002500-\U00002BEF"  # chinese char
+                                   u"\U00002702-\U000027B0"
+                                   u"\U00002702-\U000027B0"
+                                   u"\U000024C2-\U0001F251"
+                                   u"\U0001f926-\U0001f937"
+                                   u"\U00010000-\U0010ffff"
+                                   u"\u2640-\u2642"
+                                   u"\u2600-\u2B55"
+                                   u"\u200d"
+                                   u"\u23cf"
+                                   u"\u23e9"
+                                   u"\u231a"
+                                   u"\ufe0f"  # dingbats
+                                   u"\u3030"
+                                   "]+", flags=re.UNICODE)
 
-     def reddit_symbols(self):
-         known_not_stocks = ['UPVOTE','SUPPORT','YOLO','CLASS','ACTION','AGAINST','APES','TENDIES','LOSS','GAIN','WSB',
+        for title in self.new_titles:
+            clean_title = emoji_pattern.sub('', ' '.join(title))
+            self.clean_list.append(clean_title)
+
+        return self.clean_list
+
+    def reddit_symbols(self):
+        known_not_stocks = ['UPVOTE','SUPPORT','YOLO','CLASS','ACTION','AGAINST','APES','TENDIES','LOSS','GAIN','WSB',
                              'I','STILL','HEAR','NO','BELL','AGAIN']
-         known_stocks = pd.read_csv('stock_tickers.csv')
-         tickers = known_stocks['Ticker'].tolist()
-         for title in self.clean_list:
-             for word in title:
-                 if word.isupper() and word not in known_not_stocks:
-                     self.tickers.append(word)
-                 if word in tickers:
-                     self.tickers.append(word)
-                     return print(self.tickers)
+        known_stocks = pd.read_csv('stock_tickers.csv')
+        tickers = known_stocks['Ticker'].tolist()
+        for title in self.clean_list:
+            for word in title:
+                if word in tickers and word not in known_not_stocks:
+                    self.tickers.append(word)
+                #if word in tickers:
+                    #self.tickers.append(word)
+        return print(self.tickers)
+    def title_analysis(self):
+        sent = SentimentIntensityAnalyzer()
+        sentiment_score = []
+        for title in self.clean_list:
+            sentiment_score = sent.polarity_scores(title)
+        return print(sentiment_score)
+
 
 class Yahoo:
     def __init__(self,ticker,start_date,end_date):
@@ -177,7 +215,7 @@ def main():
     #entries = os.listdir('Berkshire')
     #for entry in range(1):
         # ASSE = Asset(entry)
-
+    '''
     weights = [1 / 20] * 19
     df = pd.DataFrame()
     asset = Asset('CE copy.csv')
@@ -205,8 +243,10 @@ def main():
     new_frame = Ass.calculate_return(df_copy, weights)
     print(new_frame)
     #print(df_copy)
+    
     '''
     # If you want to change the Pandas options to always display the entire DataFrame:
+    '''
     pd.set_option('display.max_rows', None)
     pd.set_option('display.max_columns', None)
     print(df_copy)  # Or simply write "df" in the terminal
@@ -214,6 +254,8 @@ def main():
     # Resetting the Pandas options to the default behavior (truncate large DataFrames)
     pd.reset_option('display.max_rows')
     pd.reset_option('display.max_columns')
+    '''
+    '''
     '''
     ticker = "SPY"
     start_date = "2016-01-01"
@@ -228,7 +270,9 @@ def main():
 
     reddit_analysis = Reddit_Analysis()
     reddit_analysis.reddit_praw()
-    reddit_analysis.reddit_symbols()
+    reddit_analysis.clean_reddit()
+    reddit_analysis.title_analysis()
+
 
 if __name__ == '__main__':
     main()
