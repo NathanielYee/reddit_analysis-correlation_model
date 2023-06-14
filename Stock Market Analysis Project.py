@@ -35,19 +35,29 @@ META_PDF = 'META 10K.pdf'
 
 class Reddit_Analysis:
      def __init__(self):
-        self.items = []
+        self.titles = []
+        self.tickers = []
      def reddit_praw(self):
         reddit = praw.Reddit(client_id=client_id, client_secret=client_secret, user_agent=user_agent,username=username, password=password)
         subreddit = reddit.subreddit('wallstreetbets')
-        top_subreddit = subreddit.new(limit=25)
-        self.items = []
+        top_subreddit = subreddit.new(limit=100)
 
         for submission in top_subreddit:
             title = submission.title
             title_words = title.split()
-            self.items.append(title_words)
-        return print(self.items)
-     def reddit_sentiment(self):
+            self.titles.append(title_words)
+        return print(self.titles)
+     def reddit_symbols(self):
+         known_not_stocks = ['UPVOTE','SUPPORT','YOLO','CLASS','ACTION','AGAINST','APES','TENDIES','LOSS','GAIN','WSB',
+                             'I','STILL','HEAR','NO','BELL','AGAIN']
+         known_stocks = ['SPY', 'TSLA']
+         for title in self.titles:
+             for word in title:
+                 if word.isupper() or known_stocks and word not in known_not_stocks:
+                     self.tickers.append(word)
+                     return print(self.tickers)
+
+
 
 
 class TextAnalyzer:
@@ -225,6 +235,7 @@ def main():
     '''
     reddit_analysis = Reddit_Analysis()
     reddit_analysis.reddit_praw()
+    reddit_analysis.reddit_symbols()
 
 if __name__ == '__main__':
     main()
