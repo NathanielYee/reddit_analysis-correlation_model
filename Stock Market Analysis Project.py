@@ -27,6 +27,7 @@ import plotly.graph_objects as go
 import praw
 from Keys import client_id, client_secret, user_agent,username,password
 import os
+import yfinance as yf
 
 SPY = "SPY.csv"
 AAPL_PDF = 'AAPL 10-K'
@@ -69,12 +70,16 @@ class Reddit_Analysis:
                      self.tickers.append(word)
                      return print(self.tickers)
 
-
-
-
-
-
-
+class Yahoo:
+    def __init__(self,ticker,start_date,end_date):
+        self.ticker = ticker
+        self.start_date = start_date
+        self.end_date = end_date
+        self.stock_data = None
+    def get_historical_data(self):
+        self.stock_data = yf.download(self.ticker,start=self.start_date, end=self.end_date)
+    def print_data(self):
+        print("\nStock:",self.ticker,self.stock_data)
 class Asset:
     '''
     def __init__(self, *components):
@@ -173,33 +178,54 @@ def main():
     #for entry in range(1):
         # ASSE = Asset(entry)
 
+    weights = [1 / 20] * 19
     df = pd.DataFrame()
+    asset = Asset('CE copy.csv')
+    new_dfs = asset.create_dataframe()
+    df['Date'] = new_dfs['Date']
 
+    for filename in os.listdir('Berkshire/'):
+        if filename.endswith('.csv'):
+            # Construct the full file path
+            file_path = os.path.join('Berkshire/', filename)
+            Ass = Asset(file_path)
+            new_df = Ass.create_dataframe()
+            df1_close = Ass.close_column(new_df, ["Date", "Close"])
 
+            filename_without_extension = os.path.splitext(filename)[0]
+            df1_close.rename(columns={"Close": filename_without_extension}, inplace=True)
 
+            df = df.merge(df1_close, on="Date", how="left")
 
+    print(df)
+    portfolio_std = df.iloc[:, 1:].std().mean()
+    print(portfolio_std)
 
+    df_copy = df.copy()
+    new_frame = Ass.calculate_return(df_copy, weights)
+    print(new_frame)
+    #print(df_copy)
+    '''
+    # If you want to change the Pandas options to always display the entire DataFrame:
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    print(df_copy)  # Or simply write "df" in the terminal
 
+    # Resetting the Pandas options to the default behavior (truncate large DataFrames)
+    pd.reset_option('display.max_rows')
+    pd.reset_option('display.max_columns')
+    '''
+    ticker = "SPY"
+    start_date = "2016-01-01"
+    end_date = "2022-12-31"
 
+    data_fetcher = Yahoo(ticker, start_date, end_date)
+    data_fetcher.get_historical_data()
+    data_fetcher.print_data()
 
     # Assets_1.summarize(df)
     # print(Assets_1)
-    '''
-    analyzer = TextAnalyzer(AAPL_PDF)
-    print('AAPL 10-K Analysis')
-    analyzer.analyze() # results {'neg': 0.057, 'neu': 0.816, 'pos': 0.127, 'compound': 1.0}
-    analyzer = TextAnalyzer(NVDA_PDF)
-    print('NVDA 10-K Analysis')
-    analyzer.analyze() # results {'neg': 0.042, 'neu': 0.824, 'pos': 0.133, 'compound': 1.0}
-    analyzer = TextAnalyzer(PTON_PDF)
-    print('Peloton 10-K Analysis')
-    analyzer.analyze() # results {'neg': 0.039, 'neu': 0.859, 'pos': 0.102, 'compound': 1.0}
-    '''
 
-    #analyzer = TextAnalyzer(META_PDF)
-    #print('META 10-K Analysis')
-    #scores = analyzer.analyze() # results {'neg': 0.055, 'neu': 0.801, 'pos': 0.144, 'compound': 1.0}
-    #analyzer.plot(data=scores)
     reddit_analysis = Reddit_Analysis()
     reddit_analysis.reddit_praw()
     reddit_analysis.reddit_symbols()
