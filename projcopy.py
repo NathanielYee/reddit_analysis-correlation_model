@@ -141,8 +141,6 @@ class Yahoo:
         fig.update_layout(xaxis_rangeslider_visible=False)
         fig.show()
 
-
-
     # def summarize(self):
     #     self.var = (self.df.describe())
     #     # print(self.var)
@@ -184,81 +182,6 @@ def create_closing(dataframe):
     return closing_df
 
 
-# class Asset:
-#     '''
-#     def __init__(self, *components):
-#         self.components = []
-#     '''
-#
-#     def __init__(self, file):
-#         self.volatility = None
-#         self.file = file
-#         self.df = None
-#         self.var = None
-#         self.combined_df = pd.DataFrame()
-#
-#     '''
-#     def __repr__(self,*args):
-#         # 0th position is always a str represented by the date
-#         attributes = ", ".join(f"{key}={value}" for key, value in self.__dict__.items())
-#         return f"Asset({attributes})"
-#     '''
-#
-#     def create_dataframe(self):
-#         self.df = pd.read_csv(self.file)
-#         return self.df
-#
-#     def candlestick(self):
-#         fig = go.Figure(data=[go.Candlestick(x=self.df['Date'],
-#                                              open=self.df['Open'], high=self.df['High'],
-#                                              low=self.df['Low'], close=self.df['Close'])
-#                               ])
-#         fig.update_layout(xaxis_rangeslider_visible=False)
-#         fig.show()
-#
-#     def summarize(self):
-#         self.var = (self.df.describe())
-#         # print(self.var)
-#         return self.var
-#
-#     def calculate_volatlity(self):
-#         returns = self.df['Close'].pctchange().dropna()
-#         self.volatility = np.sqrt(252) * returns.std()
-#         return self.volatility
-#
-#     def calculate_return(self, port_data, weights):
-#         port_return = pd.DataFrame()
-#         for stock in port_data.columns[1:]:
-#             port_return[stock + '_Return'] = port_data[stock].pct_change().fillna(0)
-#
-#         port_return['Portfolio_Return'] = port_return.iloc[:, 1:].mul(weights).sum(axis=1)
-#         return port_return
-#
-#     def standard_deviation(self):
-#         self.sd = self.var.loc['std']  # standard deviation
-#         # print(self.sd)
-#         return self.sd
-#
-#     def process_file(self):
-#         self.create_dataframe()
-#         self.candlestick()
-#         self.summarize()
-
-
-# def close_column(dataframe, column_name):
-#     """ Trying to add all the close columns into one panda dataframe and return it """
-#     df1_close = dataframe[column_name].copy()
-#     return df1_close
-#
-#
-# def create_closing(file):
-#     # Initialize the first pandas dataframe that takes in all the closing prices of each stock in the portfolio
-#     closing_df = pd.DataFrame()
-#     asset = Asset(file)
-#     new_dfs = asset.create_dataframe()
-#     # creating the first column for the pandas to help merge each of the pd df based on the date column
-#     closing_df['Date'] = new_dfs['Date']
-#     return closing_df
 
 def main():
     # Create the Berkshire Hathaway Portfolio by combining stock data for multiple datasets
@@ -267,72 +190,31 @@ def main():
     # Merge the stock data into a single DataFrame based on the 'Date' column
     # portfolio_data = pd.merge(stock1_data, stock2_data, on='Date', how='inner')
 
-    # weight of each stock in portfolio
-    weights = [1 / 20] * 1
-
-    tickers = ['TSM', 'V'] #'MA', 'PG', 'KO', 'UPS', 'AXP', 'C', 'MMC', 'MCK', 'GM', 'OXY', 'BK', 'HPQ', 'MKL', 'GL',
-               #'ALLY', 'JEF', 'RH', 'LPX'
+    tickers = ['TSM', 'V', 'MA', 'PG', 'KO', 'UPS', 'AXP', 'C', 'MMC', 'MCK', 'GM', 'OXY', 'BK', 'HPQ', 'MKL', 'GL',
+               'ALLY', 'JEF', 'RH', 'LPX']
     start_date = "2016-01-01"
     end_date = "2022-12-31"
 
-    data_fetcher = Yahoo('TSM', start_date, end_date)
+    data_fetcher = Yahoo(tickers[0], start_date, end_date)
     data_fetcher.get_historical_data()
     initial = data_fetcher.get_data_as_dataframe()
     closing_df = create_closing(initial)
-    print(closing_df )
-
-
 
     for ticker in tickers:
         data_fetcher = Yahoo(ticker, start_date, end_date)
         data_fetcher.get_historical_data()
         #data_fetcher.print_data()
         data = data_fetcher.get_data_as_dataframe()
-        #print(data['Close'])
         df_close = close_column(data, ["Date", "Close"])
-        print(df_close)
-        #closing_df = closing_df.merge(df_close, on="Date", how="left")
+        df_close = df_close.rename(columns={"Close": ticker})
+        closing_df = closing_df.merge(df_close, on="Date", how="left")
     print(closing_df)
 
-    # # df = pd.DataFrame()
-    # # asset = Asset('CE copy.csv')
-    # # new_dfs = asset.create_dataframe()
-    # # df['Date'] = new_dfs['Date']
-    #
-    # for filename in os.listdir('Berkshire/'):
-    #     if filename.endswith('.csv'):
-    #         # Construct the full file path
-    #         file_path = os.path.join('Berkshire/', filename)
-    #         Ass = Asset(file_path)
-    #         new_df = Ass.create_dataframe()
-    #         df1_close = Ass.close_column(new_df, ["Date", "Close"])
-    #
-    #         filename_without_extension = os.path.splitext(filename)[0]
-    #         df1_close.rename(columns={"Close": filename_without_extension}, inplace=True)
-    #
-    #         df = df.merge(df1_close, on="Date", how="left")
-    #
-    # print(df)
-    # portfolio_std = df.iloc[:, 1:].std().mean()
-    # print(portfolio_std)
-    #
-    # df_copy = df.copy()
-    # new_frame = Ass.calculate_return(df_copy, weights)
-    # print(new_frame)
-    # #print(df_copy)
-    #
-    #
-    # # If you want to change the Pandas options to always display the entire DataFrame:
-    #
-    # pd.set_option('display.max_rows', None)
-    # pd.set_option('display.max_columns', None)
-    # print(df_copy)  # Or simply write "df" in the terminal
-    #
-    # # Resetting the Pandas options to the default behavior (truncate large DataFrames)
-    # pd.reset_option('display.max_rows')
-    # pd.reset_option('display.max_columns')
-    # Assets_1.summarize(df)
-    # print(Assets_1)
+    # weight of each stock in portfolio
+    weights = [1 / 20] * 19
+    closing_copy = closing_df.copy()
+    port_return = calculate_return(closing_copy, weights)
+    print(port_return)
 
     reddit_analysis = Reddit_Analysis()
     reddit_analysis.reddit_praw()
