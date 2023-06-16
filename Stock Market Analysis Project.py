@@ -145,8 +145,8 @@ class Asset:
 
 
     def create_dataframe(self):
+        # useless
         self.df = pd.read_csv(self.file)
-        print(self.df)
         return self.df
 
     def candlestick(self):
@@ -170,19 +170,16 @@ class Asset:
         self.volatility = np.sqrt(252) * returns.std()
         return self.volatility
 
-    def add_dataframe_column(self, dataframe, column_name):
-        """ Trying to add all the close columns into one panda dataframe and return it """
-        #self.combined_df =
-        column = dataframe[column_name]
-        self.combined_df = pd.concat([self.combined_df, column], axis=1)
-        return self.combined_df
 
     def calculate_return(self, port_data, weights):
+        # possibly usesful
+        port_return = pd.DataFrame()
         for stock in port_data.columns[1:]:
-            port_data[stock + '_Return'] = port_data[stock].pct_change()
+            port_return[stock + '_Return'] = port_data[stock].pct_change().fillna(0)
 
-        port_data['Portfolio_Return'] = port_data.iloc[:, 1:].mul(weights).sum(axis=1)
-        
+        port_return['Portfolio_Return'] = port_return.iloc[:, 1:].mul(weights).sum(axis=1)
+        return port_return
+
     def standard_deviation(self):
         self.sd = self.var.loc['std']  # standard deviation
         # print(self.sd)
@@ -192,11 +189,21 @@ class Asset:
         self.create_dataframe()
         self.candlestick()
         self.summarize()
-        self.sharpe_ratio()
 
 
-# class Recommendation:
+def close_column(dataframe, column_name):
+    """ Trying to add all the close columns into one panda dataframe and return it """
+    df1_close = dataframe[column_name].copy()
+    return df1_close
 
+def create_closing(self, file):
+    # Initialize the first pandas dataframe that takes in all the closing prices of each stock in the portfolio
+    closing_df = pd.DataFrame()
+    asset = Asset(file)
+    new_dfs = asset.create_dataframe()
+    # creating the first column for the pandas to help merge each of the pd df based on the date column
+    closing_df['Date'] = new_dfs['Date']
+    return closing_df
 
 class Statistics_Test:
     def test_correlation(self,stock_returns,sentiment_scores,alpha=.05):
@@ -216,72 +223,62 @@ def main():
     # Merge the stock data into a single DataFrame based on the 'Date' column
     #portfolio_data = pd.merge(stock1_data, stock2_data, on='Date', how='inner')
 
-
-    '''
-    Assets_1 = Asset(SPY)
-    Assets_1.process_file()
-    summary = Assets_1.summarize()
-    print(summary)
-
-    close = Assets_1.close_prices()
-    print(close)
-
-    stdev = Assets_1.sharpe_ratio()
-    print(stdev)
-    '''
-    #weights = [0.05] * 20
-    #entries = os.listdir('Berkshire')
-    #for entry in range(1):
-        # ASSE = Asset(entry)
-    '''
+    # weight of each stock in portfolio
     weights = [1 / 20] * 19
-    df = pd.DataFrame()
-    asset = Asset('CE copy.csv')
-    new_dfs = asset.create_dataframe()
-    df['Date'] = new_dfs['Date']
+    closing_df = create_closing('CE copy.csv')
+    print(closing_df)
 
-    for filename in os.listdir('Berkshire/'):
-        if filename.endswith('.csv'):
-            # Construct the full file path
-            file_path = os.path.join('Berkshire/', filename)
-            Ass = Asset(file_path)
-            new_df = Ass.create_dataframe()
-            df1_close = Ass.close_column(new_df, ["Date", "Close"])
-
-            filename_without_extension = os.path.splitext(filename)[0]
-            df1_close.rename(columns={"Close": filename_without_extension}, inplace=True)
-
-            df = df.merge(df1_close, on="Date", how="left")
-
-    print(df)
-    portfolio_std = df.iloc[:, 1:].std().mean()
-    print(portfolio_std)
-
-    df_copy = df.copy()
-    new_frame = Ass.calculate_return(df_copy, weights)
-    print(new_frame)
-    #print(df_copy)
-    
-    '''
-    # If you want to change the Pandas options to always display the entire DataFrame:
-    '''
-    pd.set_option('display.max_rows', None)
-    pd.set_option('display.max_columns', None)
-    print(df_copy)  # Or simply write "df" in the terminal
-
-    # Resetting the Pandas options to the default behavior (truncate large DataFrames)
-    pd.reset_option('display.max_rows')
-    pd.reset_option('display.max_columns')
-    '''
-    '''
-    '''
-    ticker = "SPY"
+    tickers = ['TSM', 'V', 'MA', 'PG', 'KO', 'UPS', 'AXP', 'C', 'MMC', 'MCK', 'GM', 'OXY', 'BK', 'HPQ', 'MKL', 'GL',
+               'ALLY', 'JEF', 'RH', 'LPX']
     start_date = "2016-01-01"
     end_date = "2022-12-31"
+    for ticker in tickers: 
+        data_fetcher = Yahoo(ticker, start_date, end_date)
+        data = data_fetcher.get_historical_data()
+        # data_fetcher.print_data()
+        df_close = close_column(data, ["Date", "Close"])
+        closing_df = closing_df.merge(df_close, on="Date", how="left")
 
-    data_fetcher = Yahoo(ticker, start_date, end_date)
-    data_fetcher.get_historical_data()
-    data_fetcher.print_data()
+    # # df = pd.DataFrame()
+    # # asset = Asset('CE copy.csv')
+    # # new_dfs = asset.create_dataframe()
+    # # df['Date'] = new_dfs['Date']
+    #
+    # for filename in os.listdir('Berkshire/'):
+    #     if filename.endswith('.csv'):
+    #         # Construct the full file path
+    #         file_path = os.path.join('Berkshire/', filename)
+    #         Ass = Asset(file_path)
+    #         new_df = Ass.create_dataframe()
+    #         df1_close = Ass.close_column(new_df, ["Date", "Close"])
+    #
+    #         filename_without_extension = os.path.splitext(filename)[0]
+    #         df1_close.rename(columns={"Close": filename_without_extension}, inplace=True)
+    #
+    #         df = df.merge(df1_close, on="Date", how="left")
+    #
+    # print(df)
+    # portfolio_std = df.iloc[:, 1:].std().mean()
+    # print(portfolio_std)
+    #
+    # df_copy = df.copy()
+    # new_frame = Ass.calculate_return(df_copy, weights)
+    # print(new_frame)
+    # #print(df_copy)
+    #
+    #
+    # # If you want to change the Pandas options to always display the entire DataFrame:
+    #
+    # pd.set_option('display.max_rows', None)
+    # pd.set_option('display.max_columns', None)
+    # print(df_copy)  # Or simply write "df" in the terminal
+    #
+    # # Resetting the Pandas options to the default behavior (truncate large DataFrames)
+    # pd.reset_option('display.max_rows')
+    # pd.reset_option('display.max_columns')
+
+    '''
+    '''
 
     # Assets_1.summarize(df)
     # print(Assets_1)

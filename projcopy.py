@@ -142,6 +142,7 @@ class Yahoo:
         fig.show()
 
 
+
     # def summarize(self):
     #     self.var = (self.df.describe())
     #     # print(self.var)
@@ -162,7 +163,25 @@ class Yahoo:
     #     self.candlestick()
     #     self.summarize()
 
+def calculate_return(port_data, weights):
+    port_return = pd.DataFrame()
+    for stock in port_data.columns[1:]:
+        port_return[stock + '_Return'] = port_data[stock].pct_change().fillna(0)
 
+    port_return['Portfolio_Return'] = port_return.iloc[:, 1:].mul(weights).sum(axis=1)
+    return port_return
+
+def close_column(dataframe, column_name):
+    """ Trying to add all the close columns into one panda dataframe and return it """
+    df1_close = dataframe[column_name].copy()
+    return df1_close
+
+def create_closing(dataframe):
+    # Initialize the first pandas dataframe that takes in all the closing prices of each stock in the portfolio
+    closing_df = pd.DataFrame()
+    # creating the first column for the pandas to help merge each of the pd df based on the date column
+    closing_df['Date'] = dataframe['Date']
+    return closing_df
 
 
 # class Asset:
@@ -249,13 +268,7 @@ def main():
     # portfolio_data = pd.merge(stock1_data, stock2_data, on='Date', how='inner')
 
     # weight of each stock in portfolio
-    weights = [1 / 20] * 19
-    data_fetcher = Yahoo('TSM', start_date, end_date)
-    data_fetcher.get_historical_data()
-    initial = data_fetcher.get_data_as_dataframe()
-    closing_df = create_closing('CE copy.csv')
-    print(closing_df)
-
+    weights = [1 / 20] * 1
 
     tickers = ['TSM', 'V'] #'MA', 'PG', 'KO', 'UPS', 'AXP', 'C', 'MMC', 'MCK', 'GM', 'OXY', 'BK', 'HPQ', 'MKL', 'GL',
                #'ALLY', 'JEF', 'RH', 'LPX'
@@ -265,7 +278,8 @@ def main():
     data_fetcher = Yahoo('TSM', start_date, end_date)
     data_fetcher.get_historical_data()
     initial = data_fetcher.get_data_as_dataframe()
-    closing_df = create_closing
+    closing_df = create_closing(initial)
+    print(closing_df )
 
 
 
