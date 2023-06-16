@@ -24,13 +24,6 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="/V.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
         <entry key="/stock_tickers.csv">
           <value>
             <Attribute>

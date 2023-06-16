@@ -14,12 +14,11 @@ ETF
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-import math
-import pdfplumber
-import nltk
+#import pdfplumber
+#import nltk
+#from nltk.corpus import stopwords
+#from nltk.tokenize import word_tokenize
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
 import re
 from collections import Counter
 import numpy as np
@@ -28,6 +27,7 @@ import praw
 from Keys import client_id, client_secret, user_agent,username,password
 import os
 import yfinance as yf
+import scipy.stats as stats
 
 SPY = "SPY.csv"
 AAPL_PDF = 'AAPL 10-K'
@@ -42,6 +42,7 @@ class Reddit_Analysis:
         self.tickers = []
         self.clean_list = []
     def reddit_praw(self):
+        # Get top 30 posts and then get sent score and compare to return of the 30 days
         reddit = praw.Reddit(client_id=client_id, client_secret=client_secret, user_agent=user_agent,username=username, password=password)
         subreddit = reddit.subreddit('wallstreetbets')
         new_subreddit = subreddit.new(limit=30)
@@ -114,6 +115,10 @@ class Yahoo:
         self.start_date = start_date
         self.end_date = end_date
         self.stock_data = None
+        self.df = None
+        self.var = None
+        self.volatility = None
+        self.combined_df = pd.DataFrame()
     def get_historical_data(self):
         self.stock_data = yf.download(self.ticker,start=self.start_date, end=self.end_date)
     def print_data(self):
@@ -138,12 +143,14 @@ class Asset:
         return f"Asset({attributes})"
     '''
 
+
     def create_dataframe(self):
         self.df = pd.read_csv(self.file)
         print(self.df)
         return self.df
 
     def candlestick(self):
+        #useful for plotting possible
         fig = go.Figure(data=[go.Candlestick(x=self.df['Date'],
                                              open=self.df['Open'], high=self.df['High'],
                                              low=self.df['Low'], close=self.df['Close'])
@@ -152,11 +159,13 @@ class Asset:
         fig.show()
 
     def summarize(self):
+        # useful
         self.var = (self.df.describe())
         # print(self.var)
         return self.var
 
     def calculate_volatlity(self):
+        #useful calcs volatility
         returns = self.df['Close'].pctchange().dropna()
         self.volatility = np.sqrt(252) * returns.std()
         return self.volatility
@@ -189,7 +198,16 @@ class Asset:
 # class Recommendation:
 
 
+class Statistics_Test:
+    def test_correlation(self,stock_returns,sentiment_scores,alpha=.05):
+        '''alpha significance level is .05 or 5%'''
+        correlation,p_value = stats.pearsonr(stock_returns,sentiment_scores)
+        if p_value < alpha:
+            interpretation = "There is a significant correlation between stock returns and sentiments scores"
+        else:
+            interpretation = "There is not a significant correlation between stock returns and sentiment scoers"
 
+        return correlation,p_value,interpretation
 
 def main():
     # Create the Berkshire Hathaway Portfolio by combining stock data for multiple datasets
