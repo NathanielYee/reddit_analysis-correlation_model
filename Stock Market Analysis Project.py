@@ -33,17 +33,13 @@ class Reddit_Analysis:
         self.clean_list = []
         self.top_posts_daily = []
     def reddit_praw(self):
-        # Get top rated posts for the given time frame: Year and Limit the Posts to the amount desired 365 days in year
+        '''Function: reddit_praw
+        param:self
+        :return: a list of the top rate posts for the given time frame and limited amount of posts given an input
+        in this case 365 days or 1 year
+        '''
         subreddit = self.reddit.subreddit('wallstreetbets')
-        #new_subreddit = subreddit.new(limit=30)
         top_subreddit = subreddit.top(time_filter="year",limit=365)
-        '''
-        for submission in new_subreddit:
-            title = submission.title
-            title_words = title.split()
-            self.new_titles.append(title_words)
-        '''
-
         for submission in top_subreddit:
             title = submission.title
             title_words = title.split()
@@ -86,7 +82,7 @@ class Reddit_Analysis:
             sentiment_score = self.analyzer.polarity_scores(title)
             self.sent_score.append(sentiment_score)
         return self.sent_score
-    def plot_sentiment_vs_time(self):
+    def plot_sentiment_vs_time(self,alpha=.05):
 
         sentiment_df = pd.DataFrame(self.sent_score, columns=['compound', 'neg', 'neu', 'pos'])
         sentiment_df = sentiment_df.dropna(subset=['compound', 'neu', 'neg', 'pos'])
@@ -104,11 +100,26 @@ class Reddit_Analysis:
         plt.show()
         # Calculate correlation coefficients
         corr_compound, _ = stats.pearsonr(sentiment_df['post_number'], sentiment_df['compound'])
-        corr_neg, _ = stats.pearsonr(sentiment_df['post_number'], sentiment_df['neg'])
-        corr_neu, _ = stats.pearsonr(sentiment_df['post_number'], sentiment_df['neu'])
-        corr_pos, _ = stats.pearsonr(sentiment_df['post_number'], sentiment_df['pos'])
-        return print('Correlation Between Time and Sentiment','\nNegative Corr:',corr_neg,'\nNeutral Corr:',corr_neu,'\nPositive Corr:',corr_pos)
+        corr_neg,p_value_neg = stats.pearsonr(sentiment_df['post_number'], sentiment_df['neg'])
+        corr_neu,p_value_neu = stats.pearsonr(sentiment_df['post_number'], sentiment_df['neu'])
+        corr_pos,p_value_pos = stats.pearsonr(sentiment_df['post_number'], sentiment_df['pos'])
+        if p_value_pos < alpha:
+            interpretation_pos = "There is a significant correlation between Portfolio_Return and Positive sentiments scores"
+        else:
+            interpretation_pos = "There is not a significant correlation between Portfolio_Return and Positive sentiment scores"
 
+        if p_value_neg < alpha:
+            interpretation_neg = "There is a significant correlation between negative sentiment scores and Portfolio_Return"
+        else:
+            interpretation_neg = "There is not a significant correlation between negative sentiment scores and Portfolio_Return."
+
+        if p_value_neu < alpha:
+            interpretation_neu = "There is a significant correlation between neutral sentiment scores and Portfolio_Return."
+        else:
+            interpretation_neu = "There is not a significant correlation between neutral sentiment scores and Portfolio_Return."
+        return print('\nResults for sent vs time:', '\nP-Value Pos:', p_value_pos, interpretation_pos,
+                     '\nP-Value Neu:',
+                     p_value_neu, interpretation_neu, '\nP-Value Neg:', p_value_neg, interpretation_neg)
 
     def combined_df(self, sentiment_scores, final_return):
         sentiment_df = pd.DataFrame(sentiment_scores, columns=['compound', 'neg', 'neu', 'pos'])
@@ -122,12 +133,25 @@ class Reddit_Analysis:
         combined_df = combined_df.dropna(subset=['Portfolio_Return','Volatility','Sharpe_Ratio','compound','neu','neg','pos'])
         return combined_df
 
-    def plot_sentiment_vs_returns(self, combined_df,sentiment_scores, final_return):
+    def plot_sentiment_vs_returns(self, combined_df,sentiment_scores, final_return,alpha=.05):
         corr_compound, _ = stats.pearsonr(combined_df['Portfolio_Return'], combined_df['compound'])
-        corr_neg, _ = stats.pearsonr(combined_df['Portfolio_Return'], combined_df['neg'])
-        corr_neu, _ = stats.pearsonr(combined_df['Portfolio_Return'], combined_df['neu'])
-        corr_pos, _ = stats.pearsonr(combined_df['Portfolio_Return'], combined_df['pos'])
+        corr_neg,p_value_neg = stats.pearsonr(combined_df['Portfolio_Return'], combined_df['neg'])
+        corr_neu,p_value_neu = stats.pearsonr(combined_df['Portfolio_Return'], combined_df['neu'])
+        corr_pos,p_value_pos = stats.pearsonr(combined_df['Portfolio_Return'], combined_df['pos'])
+        if p_value_pos < alpha:
+            interpretation_pos = "There is a significant correlation between Portfolio_Return and Positive sentiments scores"
+        else:
+            interpretation_pos = "There is not a significant correlation between Portfolio_Return and Positive sentiment scores"
 
+        if p_value_neg < alpha:
+            interpretation_neg = "There is a significant correlation between negative sentiment scores and Portfolio_Return"
+        else:
+            interpretation_neg = "There is not a significant correlation between negative sentiment scores and Portfolio_Return."
+
+        if p_value_neu < alpha:
+            interpretation_neu = "There is a significant correlation between neutral sentiment scores and Portfolio_Return."
+        else:
+            interpretation_neu = "There is not a significant correlation between neutral sentiment scores and Portfolio_Return."
         # Plot correlation
         sns.regplot(data=combined_df, x='compound', y='Portfolio_Return')
         sns.regplot(data = combined_df,x='neg', y='Portfolio_Return', label='Negative',
@@ -141,15 +165,27 @@ class Reddit_Analysis:
         plt.title('Sentiment Scores vs Portfolio Returns')
         plt.legend()
         plt.show()
-        return print('\nCorrelation Between Portfolio Returns and Sentiment Score:','\nCompound Corr:'
-                     , corr_compound,'\nNegative Corr:', corr_neg,'\nNeutral Corr:', corr_neu,
-                     '\nPositive Corr:', corr_pos)
-    def plot_sentiment_vs_sharpe(self, combined_df,sentiment_scores, final_return):
-        corr_compound, _ = stats.pearsonr(combined_df['Sharpe_Ratio'], combined_df['compound'])
-        corr_neg, _ = stats.pearsonr(combined_df['Sharpe_Ratio'], combined_df['neg'])
-        corr_neu, _ = stats.pearsonr(combined_df['Sharpe_Ratio'], combined_df['neu'])
-        corr_pos, _ = stats.pearsonr(combined_df['Sharpe_Ratio'], combined_df['pos'])
+        return print('\nResults for sent vs returns:', '\nP-Value Pos:', p_value_pos, interpretation_pos,
+                     '\nP-Value Neu:',
+                     p_value_neu, interpretation_neu, '\nP-Value Neg:', p_value_neg, interpretation_neg)
+    def plot_sentiment_vs_sharpe(self, combined_df,sentiment_scores, final_return,alpha=.05):
+        corr_neg,p_value_neg = stats.pearsonr(combined_df['Sharpe_Ratio'], combined_df['neg'])
+        corr_neu,p_value_neu = stats.pearsonr(combined_df['Sharpe_Ratio'], combined_df['neu'])
+        corr_pos,p_value_pos = stats.pearsonr(combined_df['Sharpe_Ratio'], combined_df['pos'])
+        if p_value_pos < alpha:
+            interpretation_pos = "There is a significant correlation between Sharpe_Ratio and Positive sentiments scores"
+        else:
+            interpretation_pos = "There is not a significant correlation between Sharpe_Ratio and Positive sentiment scores"
 
+        if p_value_neg < alpha:
+            interpretation_neg = "There is a significant correlation between negative sentiment scores and Sharpe_Ratio"
+        else:
+            interpretation_neg = "There is not a significant correlation between negative sentiment scores and Sharpe_Ratio."
+
+        if p_value_neu < alpha:
+            interpretation_neu = "There is a significant correlation between neutral sentiment scores and Sharpe_Ratio."
+        else:
+            interpretation_neu = "There is not a significant correlation between neutral sentiment scores and Sharpe_Ratio."
         # Plot correlation
         sns.regplot(data=combined_df, x='compound', y='Sharpe_Ratio')
         sns.regplot(data = combined_df,x='neg', y='Sharpe_Ratio', label='Negative',
@@ -163,15 +199,28 @@ class Reddit_Analysis:
         plt.title('Sentiment Scores vs Sharpe_Ratio')
         plt.legend()
         plt.show()
-        return print('\nCorrelation Between Sharpe_Ratio and Sentiment Score:','\nCompound Corr:', corr_compound,'\nNegative Corr:', corr_neg,'\nNeutral Corr:', corr_neu,
-                     '\nPositive Corr:', corr_pos)
+        return print('\nResults for sent vs sharpe:', '\nP-Value Pos:', p_value_pos, interpretation_pos, '\nP-Value Neu:',
+                     p_value_neu, interpretation_neu,'\nP-Value Neg:', p_value_neg, interpretation_neg)
 
-    def plot_sentiment_vs_volatility(self, combined_df,sentiment_scores, final_return):
-        corr_compound, _ = stats.pearsonr(combined_df['Volatility'], combined_df['compound'])
-        corr_neg, _ = stats.pearsonr(combined_df['Volatility'], combined_df['neg'])
-        corr_neu, _ = stats.pearsonr(combined_df['Volatility'], combined_df['neu'])
-        corr_pos, _ = stats.pearsonr(combined_df['Volatility'], combined_df['pos'])
+    def plot_sentiment_vs_volatility(self, combined_df,sentiment_scores, final_return,alpha=.05):
+        corr_pos, _ = stats.pearsonr(combined_df['Volatility'], combined_df['compound'])
+        corr_pos,p_value_pos = stats.pearsonr(combined_df['Volatility'], combined_df['pos'])
+        corr_neu,p_value_neu = stats.pearsonr(combined_df['Volatility'], combined_df['neu'])
+        corr_neg,p_value_neg = stats.pearsonr(combined_df['Volatility'], combined_df['neg'])
+        if p_value_pos < alpha:
+            interpretation_pos = "There is a significant correlation between volatility and Positive sentiments scores"
+        else:
+            interpretation_pos = "There is not a significant correlation between volatility and Positive sentiment scores"
 
+        if p_value_neg < alpha:
+            interpretation_neg = "There is a significant correlation between negative sentiment scores and volatility."
+        else:
+            interpretation_neg = "There is not a significant correlation between negative sentiment scores and volatility."
+
+        if p_value_neu < alpha:
+            interpretation_neu = "There is a significant correlation between neutral sentiment scores and volatility."
+        else:
+            interpretation_neu = "There is not a significant correlation between neutral sentiment scores and volatility."
         # Plot correlation
         sns.regplot(data=combined_df, x='compound', y='Volatility')
         sns.regplot(data = combined_df,x='neg', y='Volatility', label='Negative',
@@ -185,29 +234,9 @@ class Reddit_Analysis:
         plt.title('Sentiment Scores vs Volatility')
         plt.legend()
         plt.show()
-        return print('\nCorrelation Between Volatility and Sentiment Score:','\nCompound Corr:', corr_compound,'\nNegative Corr:', corr_neg,'\nNeutral Corr:', corr_neu,
-                     '\nPositive Corr:', corr_pos)
-    def test_correlation(self,combined_df,alpha=.05):
-        '''alpha significance level is .05 or 5%'''
-        corr_pos,p_value_pos = stats.pearsonr(combined_df['pos'],combined_df['Portfolio_Return'])
-        corr_neg, p_value_neg = stats.pearsonr(combined_df['neg'], combined_df['Portfolio_Return'])
-        corr_neu, p_value_neu = stats.pearsonr(combined_df['neu'], combined_df['Portfolio_Return'])
-        if p_value_pos < alpha:
-            interpretation_pos = "There is a significant correlation between stock returns and Positive sentiments scores"
-        else:
-            interpretation_pos = "There is not a significant correlation between stock returns and Positive sentiment scores"
-
-        if p_value_neg < alpha:
-            interpretation_neg = "There is a significant correlation between negative sentiment scores and stock returns."
-        else:
-            interpretation_neg = "There is not a significant correlation between negative sentiment scores and stock returns."
-
-        if p_value_neu < alpha:
-            interpretation_neu = "There is a significant correlation between neutral sentiment scores and stock returns."
-        else:
-            interpretation_neu = "There is not a significant correlation between neutral sentiment scores and stock returns."
-        return print('\nP-Value Pos:',p_value_pos,interpretation_pos,'\nP-Value Neu:',p_value_neu,interpretation_neu,
-                     '\nP-Value Neg:',p_value_neg,interpretation_neg)
+        return print('\nResults for sent vs vol:','\nP-Value Pos:', p_value_pos, interpretation_pos, '\nP-Value Neu:', p_value_neu,
+                     interpretation_neu,
+                     '\nP-Value Neg:', p_value_neg, interpretation_neg)
 
 
 class Yahoo:
@@ -385,7 +414,6 @@ def main():
     reddit_analysis.plot_sentiment_vs_returns(combined_df,sent_scores, final_return)
     reddit_analysis.plot_sentiment_vs_sharpe(combined_df,sent_scores,final_return)
     reddit_analysis.plot_sentiment_vs_volatility(combined_df, sent_scores, final_return)
-    reddit_analysis.test_correlation(combined_df)
 
 
 
@@ -393,7 +421,29 @@ def main():
 if __name__ == '__main__':
     main()
 
+'''Pearson R Output Results 
+Sample Size 365 or 1 Year, With an Alpha of .05 or 5% 
 
+Results for sent vs time: 
+P-Value Pos: 0.4030400843624842 There is not a significant correlation between Portfolio_Return and Positive sentiment scores 
+P-Value Neu: 0.9308111406502669 There is not a significant correlation between neutral sentiment scores and Portfolio_Return. 
+P-Value Neg: 0.520356043179645 There is not a significant correlation between negative sentiment scores and Portfolio_Return.
+
+Results for sent vs returns: 
+P-Value Pos: 0.16832724870682353 There is not a significant correlation between Portfolio_Return and Positive sentiment scores 
+P-Value Neu: 0.4332210806574682 There is not a significant correlation between neutral sentiment scores and Portfolio_Return. 
+P-Value Neg: 0.5141758786408769 There is not a significant correlation between negative sentiment scores and Portfolio_Return.
+
+Results for sent vs sharpe: 
+P-Value Pos: 0.16832724870682353 There is not a significant correlation between Sharpe_Ratio and Positive sentiment scores 
+P-Value Neu: 0.4332210806574682 There is not a significant correlation between neutral sentiment scores and Sharpe_Ratio. 
+P-Value Neg: 0.5141758786408769 There is not a significant correlation between negative sentiment scores and Sharpe_Ratio.
+
+Results for sent vs vol: 
+P-Value Pos: 0.4898319543887323 There is not a significant correlation between volatility and Positive sentiment scores 
+P-Value Neu: 0.24152772543470266 There is not a significant correlation between neutral sentiment scores and volatility. 
+P-Value Neg: 0.04310127995349184 There is a significant correlation between negative sentiment scores and volatility.
+'''
 
 '''Unused Code
 
