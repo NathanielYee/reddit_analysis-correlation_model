@@ -28,6 +28,8 @@ from Keys import client_id, client_secret, user_agent,username,password
 import os
 import yfinance as yf
 import scipy.stats as stats
+import time
+from datetime import datetime
 
 SPY = "SPY.csv"
 AAPL_PDF = 'AAPL 10-K'
@@ -37,28 +39,30 @@ META_PDF = 'META 10K.pdf'
 
 class Reddit_Analysis:
     def __init__(self):
+        self.reddit = praw.Reddit(client_id=client_id, client_secret=client_secret, user_agent=user_agent,username=username, password=password)
+        self.analyzer = SentimentIntensityAnalyzer()
         self.new_titles = []
         self.top_titles = []
         self.tickers = []
         self.clean_list = []
+        self.top_posts_daily = []
     def reddit_praw(self):
         # Get top 30 posts and then get sent score and compare to return of the 30 days
-        reddit = praw.Reddit(client_id=client_id, client_secret=client_secret, user_agent=user_agent,username=username, password=password)
-        subreddit = reddit.subreddit('wallstreetbets')
-        new_subreddit = subreddit.new(limit=30)
-        top_subreddit = subreddit.top(time_filter="day",limit=5)
-
+        subreddit = self.reddit.subreddit('wallstreetbets')
+        #new_subreddit = subreddit.new(limit=30)
+        top_subreddit = subreddit.top(time_filter="month",limit=1761)
+        '''
         for submission in new_subreddit:
             title = submission.title
             title_words = title.split()
             self.new_titles.append(title_words)
-
+        '''
 
         for submission in top_subreddit:
             title = submission.title
             title_words = title.split()
             self.top_titles.append(title_words)
-        return print(self.new_titles)#, print(self.top_titles)
+        return print(self.top_titles)#, print(self.top_titles)
 
     def clean_reddit(self):
         '''Asked Chat GPT how to remove emojis '''
@@ -83,74 +87,126 @@ class Reddit_Analysis:
                                    u"\u3030"
                                    "]+", flags=re.UNICODE)
 
-        for title in self.new_titles:
+        for title in self.top_titles:
             clean_title = emoji_pattern.sub('', ' '.join(title))
             self.clean_list.append(clean_title)
 
-        return self.clean_list
+        return print(self.clean_list)
 
-    def reddit_symbols(self):
-        known_not_stocks = ['UPVOTE','SUPPORT','YOLO','CLASS','ACTION','AGAINST','APES','TENDIES','LOSS','GAIN','WSB',
-                             'I','STILL','HEAR','NO','BELL','AGAIN']
-        known_stocks = pd.read_csv('stock_tickers.csv')
-        tickers = known_stocks['Ticker'].tolist()
-        for title in self.clean_list:
-            for word in title:
-                if word in tickers and word not in known_not_stocks:
-                    self.tickers.append(word)
-                #if word in tickers:
-                    #self.tickers.append(word)
-        return print(self.tickers)
+    def get_top_daily_posts(self, returns_df):
+        # Source https://www.geeksforgeeks.org/python-time-mktime-method/
+        # Extract unique dates from returns DataFrame
+        unique_dates = returns_df.index.date.unique()
+        top_posts_data = []
+
+        # iterate over each unique date
+        for date in unique_dates:
+            # convert the date to Unix timestamp
+            start_timestamp = time.mktime(date.timetuple())
+            # end timestamp is start_timestamp + 24*60*60
+            end_timestamp = start_timestamp + 24 * 60 * 60
+
+            # get top posts for the day
+            top_posts = list(self.reddit.subreddit('wallstreetbets').submissions(start=start_timestamp, end=end_timestamp))
+
+            # sort the posts by score and take the first one
+            top_post = sorted(top_posts, key=lambda post: post.score, reverse=True)[0]
+
+            # append the post's data to the list
+            top_posts_data.append(
+                [top_post.title, top_post.score, top_post.id, top_post.subreddit, top_post.url, top_post.num_comments,
+                 top_post.selftext, top_post.created])
+
+        # Create a DataFrame from the top posts data
+        top_posts_df = pd.DataFrame(top_posts_data,
+                                    columns=['title', 'score', 'id', 'subreddit', 'url', 'num_comments', 'body',
+                                             'created'])
+
+        # Convert the 'created' column to datetime
+        top_posts_df['created'] = pd.to_datetime(top_posts_df['created'], unit='s')
+
+        return top_posts_df
+
     def title_analysis(self):
-        sent = SentimentIntensityAnalyzer()
-        sentiment_score = []
+        self.sent_score = []
         for title in self.clean_list:
-            sentiment_score = sent.polarity_scores(title)
-        return print(sentiment_score)
+            sentiment_score = self.analyzer.polarity_scores(title)
+            self.sent_score.append(sentiment_score)
+        return self.sent_score
+    def plot_sentiment(self):
+
+        sentiment_df = pd.DataFrame(self.sent_score, columns=['compound', 'neg', 'neu', 'pos'])
+        sentiment_df['post_number'] = range(1, len(sentiment_df) + 1)
+
+        plt.figure(figsize=(10, 6))
+        sns.regplot(x=sentiment_df['post_number'], y=sentiment_df['compound'], label='Compound',line_kws={'color':'darkblue'},scatter_kws={'color':'blue'})
+        sns.regplot(x=sentiment_df['post_number'], y=sentiment_df['neg'], label='Negative',line_kws={'color':'firebrick'}, scatter_kws={'color':'red'})
+        sns.regplot(x=sentiment_df['post_number'], y=sentiment_df['neu'], label='Neutral',line_kws={'color':'coral' }, scatter_kws={'color':'orange'})
+        sns.regplot(x=sentiment_df['post_number'], y=sentiment_df['pos'], label='Positive',line_kws={'color':'darkgreen'},scatter_kws={'color':'green'})
+        plt.xlabel('Days')
+        plt.ylabel('Sentiment Score (Pos,Neg,Neu)')
+        plt.title('Sentiment Score Trend')
+        plt.legend()
+        plt.show()
+        # Calculate correlation coefficients
+        corr_compound, _ = stats.pearsonr(sentiment_df['post_number'], sentiment_df['compound'])
+        corr_neg, _ = stats.pearsonr(sentiment_df['post_number'], sentiment_df['neg'])
+        corr_neu, _ = stats.pearsonr(sentiment_df['post_number'], sentiment_df['neu'])
+        corr_pos, _ = stats.pearsonr(sentiment_df['post_number'], sentiment_df['pos'])
+        return print('\nNegative Corr:',corr_neg,'\nNeutral Corr:',corr_neu,'\nPositive Corr:',corr_pos)
+
+
+    def combined_df(self, sentiment_scores, final_return):
+        sentiment_df = pd.DataFrame(sentiment_scores, columns=['compound', 'neg', 'neu', 'pos'])
+        # reset the index to match with sentiment_df
+        final_return.reset_index(drop=True, inplace=True)
+        # Combine sentiment scores and portfolio returns into a single DataFrame
+        combined_df = pd.concat([sentiment_df, final_return], axis=1)
+        return combined_df
+
+    def plot_sentiment_vs_returns(self, sentiment_scores, final_return):
+        sentiment_df = pd.DataFrame(sentiment_scores, columns=['compound', 'neg', 'neu', 'pos'])
+        # reset the index to match with sentiment_df
+        final_return.reset_index(drop=True, inplace=True)
+        # Combine sentiment scores and portfolio returns into a single DataFrame
+        combined_df = pd.concat([sentiment_df, final_return], axis=1)
+
+        # Plot correlation matrix
+        sns.regplot(data=combined_df, x='compound', y='Portfolio_Return')
+        sns.regplot(data = combined_df,x='neg', y='Portfolio_Return', label='Negative',
+                    line_kws={'color': 'firebrick'}, scatter_kws={'color': 'red'})
+        sns.regplot(data=combined_df,x='neu', y='Portfolio_Return', label='Neutral', line_kws={'color': 'coral'},
+                    scatter_kws={'color': 'orange'})
+        sns.regplot(data=combined_df,x='pos', y='Portfolio_Return', label='Positive',
+                    line_kws={'color': 'darkgreen'}, scatter_kws={'color': 'green'})
+        plt.xlabel('Sentiment Score (Neg,Neu,Pos,Compound)')
+        plt.ylabel('Portfolio Return')
+        plt.title('Sentiment Scores vs Portfolio Returns')
+        plt.show()
 
 
 class Yahoo:
-    def __init__(self,ticker,start_date,end_date):
+    def __init__(self, ticker, start_date, end_date):
         self.ticker = ticker
         self.start_date = start_date
         self.end_date = end_date
         self.stock_data = None
+        self.volatility = None
         self.df = None
         self.var = None
-        self.volatility = None
         self.combined_df = pd.DataFrame()
+
     def get_historical_data(self):
-        self.stock_data = yf.download(self.ticker,start=self.start_date, end=self.end_date)
+        self.stock_data = yf.download(self.ticker, start=self.start_date, end=self.end_date)
+        self.stock_data.reset_index(inplace=True)
+
     def print_data(self):
-        print("\nStock:",self.ticker,self.stock_data)
-class Asset:
-    '''
-    def __init__(self, *components):
-        self.components = []
-    '''
+        print("\nStock:", self.ticker, self.stock_data)
 
-    def __init__(self, file):
-        self.volatility = None
-        self.file = file
-        self.df = None
-        self.var = None
-        self.combined_df = pd.DataFrame()
-
-    '''
-    def __repr__(self,*args):
-        # 0th position is always a str represented by the date
-        attributes = ", ".join(f"{key}={value}" for key, value in self.__dict__.items())
-        return f"Asset({attributes})"
-    '''
-
-
-    def create_dataframe(self):
-        # useless
-        self.df = pd.read_csv(self.file)
-        return self.df
+    def get_data_as_dataframe(self):
+        return pd.DataFrame(self.stock_data)
 
     def candlestick(self):
-        #useful for plotting possible
         fig = go.Figure(data=[go.Candlestick(x=self.df['Date'],
                                              open=self.df['Open'], high=self.df['High'],
                                              low=self.df['Low'], close=self.df['Close'])
@@ -158,52 +214,79 @@ class Asset:
         fig.update_layout(xaxis_rangeslider_visible=False)
         fig.show()
 
-    def summarize(self):
-        # useful
-        self.var = (self.df.describe())
-        # print(self.var)
-        return self.var
-
-    def calculate_volatlity(self):
-        #useful calcs volatility
-        returns = self.df['Close'].pctchange().dropna()
-        self.volatility = np.sqrt(252) * returns.std()
-        return self.volatility
 
 
-    def calculate_return(self, port_data, weights):
-        # possibly usesful
-        port_return = pd.DataFrame()
-        for stock in port_data.columns[1:]:
-            port_return[stock + '_Return'] = port_data[stock].pct_change().fillna(0)
+    # def summarize(self):
+    #     self.var = (self.df.describe())
+    #     # print(self.var)
+    #     return self.var
+    #
+    # def calculate_volatlity(self):
+    #     returns = self.df['Close'].pctchange().dropna()
+    #     self.volatility = np.sqrt(252) * returns.std()
+    #     return self.volatility
+    #
+    # def standard_deviation(self):
+    #     self.sd = self.var.loc['std']  # standard deviation
+    #     # print(self.sd)
+    #     return self.sd
+    #
+    # def process_file(self):
+    #     self.create_dataframe()
+    #     self.candlestick()
+    #     self.summarize()
 
-        port_return['Portfolio_Return'] = port_return.iloc[:, 1:].mul(weights).sum(axis=1)
-        return port_return
+def calculate_return(port_data):
+    port_return = pd.DataFrame()
+    port_return['Date'] = port_data['Date']
+    for stock in port_data.columns[1:]:
+        port_return[stock  + '_Return'] = port_data[stock].pct_change().fillna(0)
+    return port_return
 
-    def standard_deviation(self):
-        self.sd = self.var.loc['std']  # standard deviation
-        # print(self.sd)
-        return self.sd
-
-    def process_file(self):
-        self.create_dataframe()
-        self.candlestick()
-        self.summarize()
-
+def portfolio_return(dataframe, weights):
+    final_return = pd.DataFrame()
+    final_return['Date'] = dataframe['Date']
+    final_return['Portfolio_Return'] = dataframe.iloc[:, 1:].mul(weights).sum(axis=1)
+    return final_return
 
 def close_column(dataframe, column_name):
     """ Trying to add all the close columns into one panda dataframe and return it """
     df1_close = dataframe[column_name].copy()
     return df1_close
 
-def create_closing(self, file):
+def create_closing(dataframe):
     # Initialize the first pandas dataframe that takes in all the closing prices of each stock in the portfolio
     closing_df = pd.DataFrame()
-    asset = Asset(file)
-    new_dfs = asset.create_dataframe()
     # creating the first column for the pandas to help merge each of the pd df based on the date column
-    closing_df['Date'] = new_dfs['Date']
+    closing_df['Date'] = dataframe['Date']
     return closing_df
+
+def sharpe_ratio(df, rf, std):
+    df['Sharpe_Ratio'] = df['Portfolio_Return'].apply(lambda x: (x - rf) / std)
+    return df
+
+
+
+def calculate_portfolio_std(dataframe, weights):
+    """
+    Calculates the portfolio standard deviation using a pandas DataFrame of different stocks and their returns.
+    Args: dataframe (pandas.DataFrame): DataFrame containing stock returns.
+    Each column represents a stock and each row represents a return value.
+    Returns: float: Portfolio standard deviation.
+    """
+    # Calculate the covariance matrix
+    covariance_matrix = dataframe.cov(numeric_only=True)
+
+    # Convert weights to NumPy array
+    weights = np.array(weights)
+
+    # Calculate the portfolio variance
+    portfolio_variance = np.dot(weights.T, np.dot(covariance_matrix, weights))
+
+    # Calculate the portfolio standard deviation
+    portfolio_std = np.sqrt(portfolio_variance)
+    return portfolio_std
+
 
 class Statistics_Test:
     def test_correlation(self,stock_returns,sentiment_scores,alpha=.05):
@@ -221,73 +304,75 @@ def main():
     # Import all of the assets in Berkshire Porfolio into one pandas data frame of all of the closing prices
     # portfolio_data = pd.merge(stock1_data, stock2_data, on='Date', how='inner')
     # Merge the stock data into a single DataFrame based on the 'Date' column
-    #portfolio_data = pd.merge(stock1_data, stock2_data, on='Date', how='inner')
-
-    # weight of each stock in portfolio
-    weights = [1 / 20] * 19
-    closing_df = create_closing('CE copy.csv')
-    print(closing_df)
+    # portfolio_data = pd.merge(stock1_data, stock2_data, on='Date', how='inner')
 
     tickers = ['TSM', 'V', 'MA', 'PG', 'KO', 'UPS', 'AXP', 'C', 'MMC', 'MCK', 'GM', 'OXY', 'BK', 'HPQ', 'MKL', 'GL',
                'ALLY', 'JEF', 'RH', 'LPX']
     start_date = "2016-01-01"
     end_date = "2022-12-31"
-    for ticker in tickers: 
+
+    data_fetcher = Yahoo(tickers[0], start_date, end_date)
+    data_fetcher.get_historical_data()
+    initial = data_fetcher.get_data_as_dataframe()
+    closing_df = create_closing(initial)
+
+    for ticker in tickers:
         data_fetcher = Yahoo(ticker, start_date, end_date)
-        data = data_fetcher.get_historical_data()
+        data_fetcher.get_historical_data()
         # data_fetcher.print_data()
+        data = data_fetcher.get_data_as_dataframe()
         df_close = close_column(data, ["Date", "Close"])
+        df_close = df_close.rename(columns={"Close": ticker})
         closing_df = closing_df.merge(df_close, on="Date", how="left")
+    #print(closing_df)
 
-    # # df = pd.DataFrame()
-    # # asset = Asset('CE copy.csv')
-    # # new_dfs = asset.create_dataframe()
-    # # df['Date'] = new_dfs['Date']
-    #
-    # for filename in os.listdir('Berkshire/'):
-    #     if filename.endswith('.csv'):
-    #         # Construct the full file path
-    #         file_path = os.path.join('Berkshire/', filename)
-    #         Ass = Asset(file_path)
-    #         new_df = Ass.create_dataframe()
-    #         df1_close = Ass.close_column(new_df, ["Date", "Close"])
-    #
-    #         filename_without_extension = os.path.splitext(filename)[0]
-    #         df1_close.rename(columns={"Close": filename_without_extension}, inplace=True)
-    #
-    #         df = df.merge(df1_close, on="Date", how="left")
-    #
-    # print(df)
-    # portfolio_std = df.iloc[:, 1:].std().mean()
-    # print(portfolio_std)
-    #
-    # df_copy = df.copy()
-    # new_frame = Ass.calculate_return(df_copy, weights)
-    # print(new_frame)
-    # #print(df_copy)
-    #
-    #
-    # # If you want to change the Pandas options to always display the entire DataFrame:
-    #
-    # pd.set_option('display.max_rows', None)
-    # pd.set_option('display.max_columns', None)
-    # print(df_copy)  # Or simply write "df" in the terminal
-    #
-    # # Resetting the Pandas options to the default behavior (truncate large DataFrames)
-    # pd.reset_option('display.max_rows')
-    # pd.reset_option('display.max_columns')
+    # weight of each stock in portfolio
+    weights = [1 / 20] * 20
+    #print(weights)
+    closing_copy = closing_df.copy()
+    port_return = calculate_return(closing_copy)
+    #print(port_return)
 
-    '''
-    '''
+    final_return = (portfolio_return(port_return, weights))
+    #print(final_return)
 
-    # Assets_1.summarize(df)
-    # print(Assets_1)
+    std = calculate_portfolio_std(port_return, weights)
+    #print(std)
 
+    rf = 1.74
+    #final_return = (sharpe_ratio(final_return, rf, std))
+    print(len(final_return))
+    print(final_return)
     reddit_analysis = Reddit_Analysis()
     reddit_analysis.reddit_praw()
     reddit_analysis.clean_reddit()
-    reddit_analysis.title_analysis()
+    sent_scores = reddit_analysis.title_analysis()
+    print(sent_scores)
+    '''Results: Negative Corr: -0.05421956596167326,Neutral Corr: 0.05401874549094921,Positive Corr: 9.271238516046039e-05'''
+    print(reddit_analysis.combined_df(sent_scores,final_return))
+    #reddit_analysis.plot_sentiment()
+    reddit_analysis.plot_sentiment_vs_returns(sent_scores, final_return)
+
 
 
 if __name__ == '__main__':
     main()
+
+
+
+'''Unused Code
+
+    def reddit_symbols(self):
+        known_not_stocks = ['UPVOTE','SUPPORT','YOLO','CLASS','ACTION','AGAINST','APES','TENDIES','LOSS','GAIN','WSB',
+                             'I','STILL','HEAR','NO','BELL','AGAIN']
+        known_stocks = pd.read_csv('stock_tickers.csv')
+        tickers = known_stocks['Ticker'].tolist()
+        for title in self.clean_list:
+            for word in title:
+                if word in tickers and word not in known_not_stocks:
+                    self.tickers.append(word)
+                #if word in tickers:
+                    #self.tickers.append(word)
+        return print(self.tickers)
+
+'''
