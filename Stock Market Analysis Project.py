@@ -13,7 +13,6 @@ the Reddit API to scrape post titles for sentiment analysis
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import re
 import numpy as np
@@ -47,6 +46,10 @@ class Reddit_Analysis:
         return print(self.top_titles)
 
     def clean_reddit(self):
+        '''Func: clean_reddit
+        param: self
+        :return:a clean list of reddit titles without any emojis
+        '''
         '''Chat GPT: how to remove emojis from list'''
         emoji_pattern = re.compile("["
                                    u"\U0001F600-\U0001F64F"  # emoticons
@@ -77,13 +80,21 @@ class Reddit_Analysis:
 
 
     def title_analysis(self):
+        '''Func: title_analysis
+        :param: self
+        Does: uses sent analysis from nltk and calcs polarity scores using vader lexicon
+        :return: a list of sentiment score dictionaries that include neg,neu,pos,and compound
+        '''
         self.sent_score = []
         for title in self.clean_list:
             sentiment_score = self.analyzer.polarity_scores(title)
             self.sent_score.append(sentiment_score)
         return self.sent_score
     def plot_sentiment_vs_time(self,alpha=.05):
-
+        '''Func: plot_sentiment_vs_time
+        :param alpha:
+        :return: An output from the results of the regression testing and plots of the values
+        '''
         sentiment_df = pd.DataFrame(self.sent_score, columns=['compound', 'neg', 'neu', 'pos'])
         sentiment_df = sentiment_df.dropna(subset=['compound', 'neu', 'neg', 'pos'])
         sentiment_df['post_number'] = range(1, len(sentiment_df) + 1)
@@ -387,7 +398,7 @@ def main():
     std = data_fetcher.calculate_portfolio_std(port_return, weights)
     print(std)
 
-    rf = .00174
+    rf = .00174 # Based off the 3 month treasury yield divided by 3 to get the 1 month
     final_return = data_fetcher.sharpe_ratio(final_return, rf, std)
     print(final_return)
 
