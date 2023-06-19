@@ -50,7 +50,7 @@ class Reddit_Analysis:
         # Get top 30 posts and then get sent score and compare to return of the 30 days
         subreddit = self.reddit.subreddit('wallstreetbets')
         #new_subreddit = subreddit.new(limit=30)
-        top_subreddit = subreddit.top(time_filter="month",limit=1761)
+        top_subreddit = subreddit.top(time_filter="year",limit=1761)
         '''
         for submission in new_subreddit:
             title = submission.title
@@ -93,39 +93,6 @@ class Reddit_Analysis:
 
         return print(self.clean_list)
 
-    def get_top_daily_posts(self, returns_df):
-        # Source https://www.geeksforgeeks.org/python-time-mktime-method/
-        # Extract unique dates from returns DataFrame
-        unique_dates = returns_df.index.date.unique()
-        top_posts_data = []
-
-        # iterate over each unique date
-        for date in unique_dates:
-            # convert the date to Unix timestamp
-            start_timestamp = time.mktime(date.timetuple())
-            # end timestamp is start_timestamp + 24*60*60
-            end_timestamp = start_timestamp + 24 * 60 * 60
-
-            # get top posts for the day
-            top_posts = list(self.reddit.subreddit('wallstreetbets').submissions(start=start_timestamp, end=end_timestamp))
-
-            # sort the posts by score and take the first one
-            top_post = sorted(top_posts, key=lambda post: post.score, reverse=True)[0]
-
-            # append the post's data to the list
-            top_posts_data.append(
-                [top_post.title, top_post.score, top_post.id, top_post.subreddit, top_post.url, top_post.num_comments,
-                 top_post.selftext, top_post.created])
-
-        # Create a DataFrame from the top posts data
-        top_posts_df = pd.DataFrame(top_posts_data,
-                                    columns=['title', 'score', 'id', 'subreddit', 'url', 'num_comments', 'body',
-                                             'created'])
-
-        # Convert the 'created' column to datetime
-        top_posts_df['created'] = pd.to_datetime(top_posts_df['created'], unit='s')
-
-        return top_posts_df
 
     def title_analysis(self):
         self.sent_score = []
@@ -136,6 +103,7 @@ class Reddit_Analysis:
     def plot_sentiment(self):
 
         sentiment_df = pd.DataFrame(self.sent_score, columns=['compound', 'neg', 'neu', 'pos'])
+        sentiment_df = sentiment_df.dropna(subset=['compound', 'neu', 'neg', 'pos'])
         sentiment_df['post_number'] = range(1, len(sentiment_df) + 1)
 
         plt.figure(figsize=(10, 6))
@@ -153,25 +121,27 @@ class Reddit_Analysis:
         corr_neg, _ = stats.pearsonr(sentiment_df['post_number'], sentiment_df['neg'])
         corr_neu, _ = stats.pearsonr(sentiment_df['post_number'], sentiment_df['neu'])
         corr_pos, _ = stats.pearsonr(sentiment_df['post_number'], sentiment_df['pos'])
-        return print('\nNegative Corr:',corr_neg,'\nNeutral Corr:',corr_neu,'\nPositive Corr:',corr_pos)
+        return print('Correlation Between Time and Sentiment','\nNegative Corr:',corr_neg,'\nNeutral Corr:',corr_neu,'\nPositive Corr:',corr_pos)
 
 
     def combined_df(self, sentiment_scores, final_return):
         sentiment_df = pd.DataFrame(sentiment_scores, columns=['compound', 'neg', 'neu', 'pos'])
         # reset the index to match with sentiment_df
         final_return.reset_index(drop=True, inplace=True)
+
         # Combine sentiment scores and portfolio returns into a single DataFrame
         combined_df = pd.concat([sentiment_df, final_return], axis=1)
+        combined_df = combined_df.replace([np.inf, -np.inf], np.nan)
+        combined_df = combined_df.dropna(subset=['Portfolio_Return', 'compound','neu','neg','pos'])
         return combined_df
 
-    def plot_sentiment_vs_returns(self, sentiment_scores, final_return):
-        sentiment_df = pd.DataFrame(sentiment_scores, columns=['compound', 'neg', 'neu', 'pos'])
-        # reset the index to match with sentiment_df
-        final_return.reset_index(drop=True, inplace=True)
-        # Combine sentiment scores and portfolio returns into a single DataFrame
-        combined_df = pd.concat([sentiment_df, final_return], axis=1)
+    def plot_sentiment_vs_returns(self, combined_df,sentiment_scores, final_return):
+        corr_compound, _ = stats.pearsonr(combined_df['Portfolio_Return'], combined_df['compound'])
+        corr_neg, _ = stats.pearsonr(combined_df['Portfolio_Return'], combined_df['neg'])
+        corr_neu, _ = stats.pearsonr(combined_df['Portfolio_Return'], combined_df['neu'])
+        corr_pos, _ = stats.pearsonr(combined_df['Portfolio_Return'], combined_df['pos'])
 
-        # Plot correlation matrix
+        # Plot correlation
         sns.regplot(data=combined_df, x='compound', y='Portfolio_Return')
         sns.regplot(data = combined_df,x='neg', y='Portfolio_Return', label='Negative',
                     line_kws={'color': 'firebrick'}, scatter_kws={'color': 'red'})
@@ -182,7 +152,19 @@ class Reddit_Analysis:
         plt.xlabel('Sentiment Score (Neg,Neu,Pos,Compound)')
         plt.ylabel('Portfolio Return')
         plt.title('Sentiment Scores vs Portfolio Returns')
+        plt.legend()
         plt.show()
+        return print('\nCorrelation Between Portfolio Returns and Sentiment Score:','\nCompound Corr:', corr_compound,'\nNegative Corr:', corr_neg,'\nNeutral Corr:', corr_neu,
+                     '\nPositive Corr:', corr_pos)
+    def test_correlation(self,combined_df,alpha=.05):
+        '''alpha significance level is .05 or 5%'''
+        correlation,p_value = stats.pearsonr(combined_df['pos'],combined_df['Portfolio_Return'])
+        if p_value < alpha:
+            interpretation = "There is a significant correlation between stock returns and sentiments scores"
+        else:
+            interpretation = "There is not a significant correlation between stock returns and sentiment scores"
+
+        return correlation,print('\nThe P-Value:',p_value,'\nConclusion:',interpretation)
 
 
 class Yahoo:
@@ -288,17 +270,6 @@ def calculate_portfolio_std(dataframe, weights):
     return portfolio_std
 
 
-class Statistics_Test:
-    def test_correlation(self,stock_returns,sentiment_scores,alpha=.05):
-        '''alpha significance level is .05 or 5%'''
-        correlation,p_value = stats.pearsonr(stock_returns,sentiment_scores)
-        if p_value < alpha:
-            interpretation = "There is a significant correlation between stock returns and sentiments scores"
-        else:
-            interpretation = "There is not a significant correlation between stock returns and sentiment scoers"
-
-        return correlation,p_value,interpretation
-
 def main():
     # Create the Berkshire Hathaway Portfolio by combining stock data for multiple datasets
     # Import all of the assets in Berkshire Porfolio into one pandas data frame of all of the closing prices
@@ -341,17 +312,21 @@ def main():
 
     rf = 1.74
     #final_return = (sharpe_ratio(final_return, rf, std))
-    print(len(final_return))
     print(final_return)
+    print(len(final_return))
     reddit_analysis = Reddit_Analysis()
     reddit_analysis.reddit_praw()
     reddit_analysis.clean_reddit()
     sent_scores = reddit_analysis.title_analysis()
     print(sent_scores)
     '''Results: Negative Corr: -0.05421956596167326,Neutral Corr: 0.05401874549094921,Positive Corr: 9.271238516046039e-05'''
-    print(reddit_analysis.combined_df(sent_scores,final_return))
-    #reddit_analysis.plot_sentiment()
-    reddit_analysis.plot_sentiment_vs_returns(sent_scores, final_return)
+
+    combined_df = reddit_analysis.combined_df(sent_scores,final_return)
+    print(combined_df)
+    reddit_analysis.plot_sentiment()
+    reddit_analysis.plot_sentiment_vs_returns(combined_df,sent_scores, final_return)
+    reddit_analysis.test_correlation(combined_df)
+
 
 
 
