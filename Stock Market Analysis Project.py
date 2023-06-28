@@ -24,7 +24,8 @@ import scipy.stats as stats
 
 class Reddit_Analysis:
     def __init__(self):
-        self.reddit = praw.Reddit(client_id=client_id, client_secret=client_secret, user_agent=user_agent,username=username, password=password)
+        self.reddit = praw.Reddit(client_id=client_id, client_secret=client_secret, user_agent=user_agent,
+                                  username=username, password=password)
         self.analyzer = SentimentIntensityAnalyzer()
         self.new_titles = []
         self.top_titles = []
@@ -100,10 +101,14 @@ class Reddit_Analysis:
         sentiment_df['post_number'] = range(1, len(sentiment_df) + 1)
 
         plt.figure(figsize=(10, 6))
-        sns.regplot(x=sentiment_df['post_number'], y=sentiment_df['compound'], label='Compound',line_kws={'color':'darkblue'},scatter_kws={'color':'blue'})
-        sns.regplot(x=sentiment_df['post_number'], y=sentiment_df['neg'], label='Negative',line_kws={'color':'firebrick'}, scatter_kws={'color':'red'})
-        sns.regplot(x=sentiment_df['post_number'], y=sentiment_df['neu'], label='Neutral',line_kws={'color':'coral' }, scatter_kws={'color':'orange'})
-        sns.regplot(x=sentiment_df['post_number'], y=sentiment_df['pos'], label='Positive',line_kws={'color':'darkgreen'},scatter_kws={'color':'green'})
+        sns.regplot(x=sentiment_df['post_number'], y=sentiment_df['compound'], label='Compound',
+                    line_kws={'color':'darkblue'},scatter_kws={'color':'blue'})
+        sns.regplot(x=sentiment_df['post_number'], y=sentiment_df['neg'], label='Negative',
+                    line_kws={'color':'firebrick'}, scatter_kws={'color':'red'})
+        sns.regplot(x=sentiment_df['post_number'], y=sentiment_df['neu'], label='Neutral',
+                    line_kws={'color':'coral' }, scatter_kws={'color':'orange'})
+        sns.regplot(x=sentiment_df['post_number'], y=sentiment_df['pos'], label='Positive',
+                    line_kws={'color':'darkgreen'},scatter_kws={'color':'green'})
         plt.xlabel('Days')
         plt.ylabel('Sentiment Score (Pos,Neg,Neu)')
         plt.title('Sentiment Score Trend')
@@ -133,6 +138,12 @@ class Reddit_Analysis:
                      p_value_neu, interpretation_neu, '\nP-Value Neg:', p_value_neg, interpretation_neg)
 
     def combined_df(self, sentiment_scores, final_return):
+        '''Function: combined_df
+        :param sentiment_scores:
+        :param final_return:
+        Does: combines the data frame that contains the sentiment scores and final returns dataframe
+        :return: a concatenated dataframe
+        '''
         sentiment_df = pd.DataFrame(sentiment_scores, columns=['compound', 'neg', 'neu', 'pos'])
         # reset the index to match with sentiment_df
         final_return.reset_index(drop=True, inplace=True)
@@ -145,6 +156,13 @@ class Reddit_Analysis:
         return combined_df
 
     def plot_sentiment_vs_returns(self, combined_df,sentiment_scores, final_return,alpha=.05):
+        '''Function: plot sentiment vs returns
+        :param combined_df:
+        :param sentiment_scores:
+        :param final_return:
+        :param alpha:
+        :return: plot and analysis of the t test
+        '''
         corr_compound, _ = stats.pearsonr(combined_df['Portfolio_Return'], combined_df['compound'])
         corr_neg,p_value_neg = stats.pearsonr(combined_df['Portfolio_Return'], combined_df['neg'])
         corr_neu,p_value_neu = stats.pearsonr(combined_df['Portfolio_Return'], combined_df['neu'])
@@ -180,6 +198,13 @@ class Reddit_Analysis:
                      '\nP-Value Neu:',
                      p_value_neu, interpretation_neu, '\nP-Value Neg:', p_value_neg, interpretation_neg)
     def plot_sentiment_vs_sharpe(self, combined_df,sentiment_scores, final_return,alpha=.05):
+        '''Function: plot_sentiment_vs_sharpe
+        :param combined_df:
+        :param sentiment_scores:
+        :param final_return:
+        :param alpha:
+        :return: plots of sentiment vs sharpe ratio with returned t-test results
+        '''
         corr_neg,p_value_neg = stats.pearsonr(combined_df['Sharpe_Ratio'], combined_df['neg'])
         corr_neu,p_value_neu = stats.pearsonr(combined_df['Sharpe_Ratio'], combined_df['neu'])
         corr_pos,p_value_pos = stats.pearsonr(combined_df['Sharpe_Ratio'], combined_df['pos'])
@@ -214,6 +239,13 @@ class Reddit_Analysis:
                      p_value_neu, interpretation_neu,'\nP-Value Neg:', p_value_neg, interpretation_neg)
 
     def plot_sentiment_vs_volatility(self, combined_df,sentiment_scores, final_return,alpha=.05):
+        '''Function: plot_sentiment_vs_volatility
+        :param combined_df:
+        :param sentiment_scores:
+        :param final_return:
+        :param alpha:
+        :return: plots of sentiment vs volatility with returned t-test results
+        '''
         corr_pos, _ = stats.pearsonr(combined_df['Volatility'], combined_df['compound'])
         corr_pos,p_value_pos = stats.pearsonr(combined_df['Volatility'], combined_df['pos'])
         corr_neu,p_value_neu = stats.pearsonr(combined_df['Volatility'], combined_df['neu'])
@@ -245,9 +277,8 @@ class Reddit_Analysis:
         plt.title('Sentiment Scores vs Volatility')
         plt.legend()
         plt.show()
-        return print('\nResults for sent vs vol:','\nP-Value Pos:', p_value_pos, interpretation_pos, '\nP-Value Neu:', p_value_neu,
-                     interpretation_neu,
-                     '\nP-Value Neg:', p_value_neg, interpretation_neg)
+        return print('\nResults for sent vs vol:','\nP-Value Pos:', p_value_pos, interpretation_pos, '\nP-Value Neu:',
+                     p_value_neu, interpretation_neu, '\nP-Value Neg:', p_value_neg, interpretation_neg)
 
 
 class Yahoo:
@@ -262,16 +293,31 @@ class Yahoo:
         self.combined_df = pd.DataFrame()
 
     def get_historical_data(self):
+        """
+            Function: get_historical_data
+            Parameter: ticker symbol, start date, and end date
+            Return: Corresponding stock data from Yahoo Finance Database
+            Does: Returns stock data as a dataframe
+        """
         self.stock_data = yf.download(self.ticker, start=self.start_date, end=self.end_date)
         self.stock_data.reset_index(inplace=True)
 
     def print_data(self):
+        '''
+        :return: print stock data
+        '''
         print("\nStock:", self.ticker, self.stock_data)
 
     def get_data_as_dataframe(self):
+        '''
+        :return: returns the yahoo finance as dataframe
+        '''
         return pd.DataFrame(self.stock_data)
 
     def candlestick(self):
+        '''
+        :return: candlestick visualization using historical data using 'Date', 'Open', 'High', 'Low', 'Close'
+        '''
         fig = go.Figure(data=[go.Candlestick(x=self.df['Date'],
                                              open=self.df['Open'], high=self.df['High'],
                                              low=self.df['Low'], close=self.df['Close'])
@@ -280,97 +326,121 @@ class Yahoo:
         fig.show()
 
 
+    def create_closing(self):
+        '''
+        :return: creates the initial column to merge the closing data
+        '''
+        # Initialize the first pandas dataframe that takes in all the closing prices of each stock in the portfolio
+        closing_df = pd.DataFrame()
+        dataframe = pd.DataFrame(self.stock_data)
+        # creating the first column for the pandas to help merge each of the pd df based on the date column
+        closing_df['Date'] = dataframe['Date']
+        return closing_df
 
-    # def summarize(self):
-    #     self.var = (self.df.describe())
-    #     # print(self.var)
-    #     return self.var
-    #
+    def close_column(self, column_name):
+        '''
+        :param column_name:
+        :return: returns pandas dataframe of only the column that are specified
+        '''
+        dataframe = pd.DataFrame(self.stock_data)
+        df1_close = dataframe[column_name].copy()
+        return df1_close
 
-    #
-    # def standard_deviation(self):
-    #     self.sd = self.var.loc['std']  # standard deviation
-    #     # print(self.sd)
-    #     return self.sd
-    #
-    # def process_file(self):
-    #     self.create_dataframe()
-    #     self.candlestick()
-    #     self.summarize()
-'''
-def calculate_volatlity(self):
-    returns = self.df['Close'].pctchange().dropna()
-    volatility = np.sqrt(252) * returns.std()
-    return volatility
-'''
-# def calculate_return(port_data):
-#     port_return = pd.DataFrame()
-#     port_return['Date'] = port_data['Date']
-#     for stock in port_data.columns[1:]:
-#         port_return[stock  + '_Return'] = port_data[stock].pct_change().fillna(0)
-#     return port_return
-#
-# def portfolio_return(dataframe, weights):
-#     final_return = pd.DataFrame()
-#     final_return['Date'] = dataframe['Date']
-#     final_return['Portfolio_Return'] = dataframe.iloc[:, 1:].mul(weights).sum(axis=1)
-#     return final_return
-#
-# def close_column(dataframe, column_name):
-#     """ Trying to add all the close columns into one panda dataframe and return it """
-#     df1_close = dataframe[column_name].copy()
-#     return df1_close
-#
-# def create_closing(dataframe):
-#     # Initialize the first pandas dataframe that takes in all the closing prices of each stock in the portfolio
-#     closing_df = pd.DataFrame()
-#     # creating the first column for the pandas to help merge each of the pd df based on the date column
-#     closing_df['Date'] = dataframe['Date']
-#     return closing_df
-#
-# def sharpe_ratio(df, rf, std):
-#     df['Sharpe_Ratio'] = df['Portfolio_Return'].apply(lambda x: (x - rf) / std)
-#     return df
+    def merge_dataframes(self, df1, df2):
+        '''
+        :param df1: create_closing dataframe with just the date to merge data on
+        :param df2: close_column where the dataframe is the columns specified
+        :return: merged dataframe on the date merged to the left to return 'Date' on the left
+        '''
+        df1 = pd.merge(df1, df2, on="Date", how="left")
+        return df1
 
+    def calculate_volatility(self, final_df, dataframe):
+        '''
+        :param final_df: the final dataframe with where we eventually append volatility, sharpe ratio, and portfolio return
+        :param dataframe: volatility series
+        :return: final dataframe including column volatility
+        '''
+        returns = dataframe.iloc[:, 1:].pct_change()
+        volatility = returns.std(axis=1)
+        final_df['Volatility'] = volatility
+        return final_df
+
+    def calculate_return(self, port_data):
+        '''
+        :param port_data: pandas dataframe including all of the historical data for a specific stock
+        :return: pandas datafarme with all individual stock percentage return
+        '''
+        port_return = pd.DataFrame()
+        port_return['Date'] = port_data['Date']
+        for stock in port_data.columns[1:]:
+            port_return[stock + '_Return'] = port_data[stock].pct_change().fillna(0)
+        return port_return
 
 
-def calculate_portfolio_std(dataframe, weights):
-    """
-    Calculates the portfolio standard deviation using a pandas DataFrame of different stocks and their returns.
-    Args: dataframe (pandas.DataFrame): DataFrame containing stock returns.
-    Each column represents a stock and each row represents a return value.
-    Returns: float: Portfolio standard deviation.
-    """
-    # Calculate the covariance matrix
-    covariance_matrix = dataframe.cov(numeric_only=True)
+    def portfolio_return(self, dataframe, weights):
+        '''
+        :param dataframe: pandas datafarme with all individual stock percentage return
+        :param weights: individual weights for each stock (in this case 1/20 )
+        :return: entire portfolio stock return pandas dataframe
+        '''
+        final_return = pd.DataFrame()
+        final_return['Date'] = dataframe['Date']
+        final_return['Portfolio_Return'] = dataframe.iloc[:, 1:].mul(weights).sum(axis=1)
+        return final_return
 
-    # Convert weights to NumPy array
-    weights = np.array(weights)
+    def calculate_portfolio_std(self, dataframe, weights):
+        """
+        Calculates the portfolio standard deviation using a pandas DataFrame of different stocks and their returns.
+        Args: dataframe (pandas.DataFrame): DataFrame containing stock returns.
+        Each column represents a stock and each row represents a return value.
+        Returns: float: Portfolio standard deviation.
+        """
+        # Calculate the covariance matrix
+        covariance_matrix = dataframe.cov(numeric_only=True)
 
-    # Calculate the portfolio variance
-    portfolio_variance = np.dot(weights.T, np.dot(covariance_matrix, weights))
+        # Convert weights to NumPy array
+        weights = np.array(weights)
 
-    # Calculate the portfolio standard deviation
-    portfolio_std = np.sqrt(portfolio_variance)
-    return portfolio_std
+        # Calculate the portfolio variance
+        portfolio_variance = np.dot(weights.T, np.dot(covariance_matrix, weights))
+
+        # Calculate the portfolio standard deviation
+        portfolio_std = np.sqrt(portfolio_variance)
+        return portfolio_std
+
+    def sharpe_ratio(self, dataframe, rf, std):
+        '''
+        :param dataframe: entire portfolio stock return pandas dataframe
+        :param rf: risk free rate
+        :param std: portfolio standard deviation
+        :return: sharpe ratio pandas datframe
+        '''
+        #dataframe['Sharpe_Ratio'] = dataframe['Portfolio_Return'].apply(lambda x: (x - rf) / std)
+        excess_return = dataframe['Portfolio_Return'] - rf
+        sharpe_ratio = excess_return / std
+        dataframe['Sharpe_Ratio'] = sharpe_ratio
+        return dataframe
 
 
 def main():
     # Create the Berkshire Hathaway Portfolio by combining stock data for multiple datasets
     # Import all of the assets in Berkshire Porfolio into one pandas data frame of all of the closing prices
-    # portfolio_data = pd.merge(stock1_data, stock2_data, on='Date', how='inner')
     # Merge the stock data into a single DataFrame based on the 'Date' column
-    # portfolio_data = pd.merge(stock1_data, stock2_data, on='Date', how='inner')
+
+    # Yahoo Finance API parameters
     tickers = ['TSM', 'V', 'MA', 'PG', 'KO', 'UPS', 'AXP', 'C', 'MMC', 'MCK', 'GM', 'OXY', 'BK', 'HPQ', 'MKL', 'GL',
                'ALLY', 'JEF', 'RH', 'LPX']
     start_date = "2022-06-19"
     end_date = "2023-06-19"
 
+    # Initial create closing pandas dataframe with all dates to eventually merge following data
     data_fetcher = Yahoo(tickers[0], start_date, end_date)
     data_fetcher.get_historical_data()
     closing_df = data_fetcher.create_closing()
     print(closing_df)
 
+    # Create Dataframe with 'Close' Prices for each stock by date
     for ticker in tickers:
         data_fetcher = Yahoo(ticker, start_date, end_date)
         data_fetcher.get_historical_data()
@@ -386,25 +456,27 @@ def main():
     weights = [1 / 20] * 20
     print(weights)
 
+    # Calculation of percentage return data
     closing_copy = closing_df.copy()
-
-
     port_return = data_fetcher.calculate_return(closing_copy)
     print(port_return)
 
+    # Calculation of entire Portfolio return
     final_return = (data_fetcher.portfolio_return(port_return, weights))
     print(final_return)
 
+    # Calculation of standard deviation to eventually be used to calculate sharpe ratio
     std = data_fetcher.calculate_portfolio_std(port_return, weights)
     print(std)
 
-    rf = .00174 # Based off the 3 month treasury yield divided by 3 to get the 1 month
+    rf = .00174 # Risk free rate based off the 3 month treasury yield divided by 3 to get the 1 month
+    # Calculation of sharpre ratio
     final_return = data_fetcher.sharpe_ratio(final_return, rf, std)
     print(final_return)
 
+    # Calculation of volatility
     final_return = data_fetcher.calculate_volatility(final_return, closing_copy)
     print(final_return)
-
 
     # Initialize Reddit Object
     reddit_analysis = Reddit_Analysis()
@@ -416,7 +488,6 @@ def main():
     sent_scores = reddit_analysis.title_analysis()
     # Show Results
     print(sent_scores)
-    '''Results: Negative Corr: -0.05421956596167326,Neutral Corr: 0.05401874549094921,Positive Corr: 9.271238516046039e-05'''
     # Combine the sentiment and returns into one dataframe for plotting
     combined_df = reddit_analysis.combined_df(sent_scores,final_return)
     print(combined_df)
@@ -454,21 +525,4 @@ Results for sent vs vol:
 P-Value Pos: 0.4898319543887323 There is not a significant correlation between volatility and Positive sentiment scores 
 P-Value Neu: 0.24152772543470266 There is not a significant correlation between neutral sentiment scores and volatility. 
 P-Value Neg: 0.04310127995349184 There is a significant correlation between negative sentiment scores and volatility.
-'''
-
-'''Unused Code
-
-    def reddit_symbols(self):
-        known_not_stocks = ['UPVOTE','SUPPORT','YOLO','CLASS','ACTION','AGAINST','APES','TENDIES','LOSS','GAIN','WSB',
-                             'I','STILL','HEAR','NO','BELL','AGAIN']
-        known_stocks = pd.read_csv('stock_tickers.csv')
-        tickers = known_stocks['Ticker'].tolist()
-        for title in self.clean_list:
-            for word in title:
-                if word in tickers and word not in known_not_stocks:
-                    self.tickers.append(word)
-                #if word in tickers:
-                    #self.tickers.append(word)
-        return print(self.tickers)
-
 '''
